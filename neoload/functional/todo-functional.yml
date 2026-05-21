@@ -34,6 +34,9 @@ scenarios:
     description: "Baseline smoke scenario for CI validation."
     populations:
       - name: "FunctionalUser"
-        constant_load:
-          users: 1
-          duration: "1 iterations"
+        rampup_load:
+          min_users: 1
+          max_users: 1
+          increment_users: 1
+          increment_every: 1s
+          duration: "30s"

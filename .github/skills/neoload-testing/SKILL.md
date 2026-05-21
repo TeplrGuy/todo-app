@@ -38,7 +38,7 @@ These rules apply to **both** local `neoload validate` AND NeoLoad SaaS server-s
 |---|---|---|
 | `servers` block required | `servers: [{name, host, port, scheme}]` | omitting `servers` |
 | `request` step is an object | `- request: {url: /, server: todo_app}` | `- request: /` |
-| Scenario population load | `constant_load: {users: N, duration: "Xm"}` or `rampup_load: {min_users, max_users, increment_users, increment_every, duration}` | `duration: {type: iteration}`, `rampup:`, `constant:` |
+| Scenario population load | `rampup_load: {min_users, max_users, increment_users, increment_every, duration}` | `constant_load:` (avoid — server compatibility unclear), `rampup:`, `constant:`, `duration: {type: iteration}` |
 | Duration format | `"5m"`, `"30s"`, `"1 iterations"` (string) | `{type: iteration, count: 1}` (object) |
 | `populations[].user_paths[]` | `- name: "Path Name"` only | adding `distribution: 100%` |
 | `scenarios[]` properties | `name`, `description`, `populations` only | `assertions:` — not in schema |
@@ -81,9 +81,12 @@ scenarios:
   - name: "Functional Smoke"
     populations:
       - name: "FunctionalUser"
-        constant_load:
-          users: 1
-          duration: "1 iterations"
+        rampup_load:
+          min_users: 1
+          max_users: 1
+          increment_users: 1
+          increment_every: 1s
+          duration: "30s"
 ```
 
 ### Load baseline

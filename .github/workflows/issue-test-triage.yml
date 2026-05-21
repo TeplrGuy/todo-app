@@ -140,9 +140,12 @@ jobs:
                 `    description: "Issue #${context.issue.number} functional implementation suggestion"`,
                 '    populations:',
                 '      - name: "FunctionalUser"',
-                '        constant_load:',
-                '          users: 1',
-                '          duration: "1 iterations"'
+                '        rampup_load:',
+                '          min_users: 1',
+                '          max_users: 1',
+                '          increment_users: 1',
+                '          increment_every: 1s',
+                '          duration: "30s"'
               ].join('\n') + '\n';
               implementationFiles.push({ path: proposalFunctionalPath, content: functionalYaml });
             }
@@ -371,9 +374,12 @@ jobs:
               comment += `    description: "Auto-generated from issue #${context.issue.number}"` + nl;
               comment += '    populations:' + nl;
               comment += '      - name: "FunctionalUser"' + nl;
-              comment += '        constant_load:' + nl;
-              comment += '          users: 1' + nl;
-              comment += '          duration: "1 iterations"' + nl;
+              comment += '        rampup_load:' + nl;
+              comment += '          min_users: 1' + nl;
+              comment += '          max_users: 1' + nl;
+              comment += '          increment_users: 1' + nl;
+              comment += '          increment_every: 1s' + nl;
+              comment += '          duration: "30s"' + nl;
               comment += '```' + nl;
             }
 
