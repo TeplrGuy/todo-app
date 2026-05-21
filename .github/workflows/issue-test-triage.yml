@@ -182,27 +182,35 @@ jobs:
               implementationFiles.push({ path: proposalLoadPath, content: loadYaml });
             }
 
-            const getBranchRef = async () => {
+            const ensureBranchAtDefault = async () => {
               try {
-                return await github.rest.git.getRef({
+                await github.rest.git.getRef({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   ref: `heads/${issueBranch}`
                 });
+                await github.rest.git.updateRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `heads/${issueBranch}`,
+                  sha: defaultBranchSha,
+                  force: true
+                });
               } catch (error) {
                 if (error.status === 404) {
-                  return github.rest.git.createRef({
+                  await github.rest.git.createRef({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     ref: `refs/heads/${issueBranch}`,
                     sha: defaultBranchSha
                   });
+                } else {
+                  throw error;
                 }
-                throw error;
               }
             };
 
-            await getBranchRef();
+            await ensureBranchAtDefault();
 
             for (const file of implementationFiles) {
               let existingFileSha;
