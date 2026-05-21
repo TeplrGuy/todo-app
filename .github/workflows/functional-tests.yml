@@ -47,9 +47,9 @@ jobs:
           for f in "${FILES[@]}"; do
             echo "  → Validating ${f}"
             python -c "import sys,yaml; p=sys.argv[1]; d=yaml.safe_load(open(p,'r',encoding='utf-8')); \
-            isinstance(d, dict) or (_ for _ in ()).throw(SystemExit(p + ': top-level YAML node must be a mapping')); \
+            isinstance(d, dict) or sys.exit(p + ': top-level YAML node must be a mapping'); \
             req=('name','user_paths','populations','scenarios'); miss=[k for k in req if k not in d]; \
-            not miss or (_ for _ in ()).throw(SystemExit(p + ': missing required keys: ' + ', '.join(miss)))" "${f}"
+            (not miss) or sys.exit(p + ': missing required keys: ' + ', '.join(miss))" "${f}"
           done
 
       - name: Run NeoLoad functional tests
