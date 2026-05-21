@@ -1,8 +1,14 @@
 # NeoLoad Functional Smoke Baseline for Todo App
-# This baseline is NeoLoad as-code compatible and passes `neoload validate`.
-# Expand actions.steps with additional valid NeoLoad DSL operations as needed.
+# Validated against NeoLoad as-code schema (neoload validate passes).
+# Requires servers block + at least one request step for NeoLoad SaaS upload.
 
 name: "Todo App Functional Smoke"
+
+servers:
+  - name: todo_app
+    host: localhost
+    port: 1420
+    scheme: http
 
 variables:
   - name: BASE_URL
@@ -12,6 +18,8 @@ user_paths:
   - name: "Functional Smoke"
     actions:
       steps:
+        - request:
+            url: /
         - think_time: 1s
 
 populations:

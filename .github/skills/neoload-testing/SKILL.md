@@ -55,6 +55,11 @@ Use these as starting points because they validate with `neoload validate` out o
 
 ```yaml
 name: "Functional Smoke"
+servers:
+  - name: todo_app
+    host: localhost
+    port: 1420
+    scheme: http
 variables:
   - name: BASE_URL
     value: "http://localhost:1420"
@@ -62,6 +67,8 @@ user_paths:
   - name: "Functional Smoke"
     actions:
       steps:
+        - request:
+            url: /
         - think_time: 1s
 populations:
   - name: "FunctionalUser"
@@ -84,6 +91,11 @@ scenarios:
 
 ```yaml
 name: "Standard Load"
+servers:
+  - name: todo_app
+    host: localhost
+    port: 1420
+    scheme: http
 variables:
   - name: BASE_URL
     value: "http://localhost:1420"
@@ -91,6 +103,8 @@ user_paths:
   - name: "Load Path"
     actions:
       steps:
+        - request:
+            url: /
         - think_time: 1s
 populations:
   - name: "Users"

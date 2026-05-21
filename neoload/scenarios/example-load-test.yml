@@ -4,6 +4,12 @@
 
 name: "Todo App Load Test"
 
+servers:
+  - name: todo_app
+    host: localhost
+    port: 1420
+    scheme: http
+
 variables:
   - name: BASE_URL
     value: "http://localhost:1420"
@@ -12,6 +18,8 @@ user_paths:
   - name: "Load Path"
     actions:
       steps:
+        - request:
+            url: /
         - think_time: 1s
 
 populations:
