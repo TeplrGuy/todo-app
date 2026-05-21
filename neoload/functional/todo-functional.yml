@@ -1,28 +1,12 @@
-# NeoLoad Functional Smoke Baseline for Todo App
-# Validated against NeoLoad as-code schema (neoload validate passes).
-# Requires servers block + at least one request step for NeoLoad SaaS upload.
-
 name: "Todo App Functional Smoke"
-
-servers:
-  - name: todo_app
-    host: green-wave-0693f8c0f.7.azurestaticapps.net
-    port: 443
-    scheme: https
-
-variables:
-  - name: BASE_URL
-    value: "https://green-wave-0693f8c0f.7.azurestaticapps.net"
 
 user_paths:
   - name: "Functional Smoke"
     actions:
       steps:
         - request:
-            url: /
-            server: todo_app
-            method: GET
-        - think_time: 1s
+            url: https://green-wave-0693f8c0f.7.azurestaticapps.net/
+        - delay: 1s
 
 populations:
   - name: "FunctionalUser"
@@ -31,7 +15,6 @@ populations:
 
 scenarios:
   - name: "Functional Smoke Suite"
-    description: "Baseline smoke scenario for CI validation."
     populations:
       - name: "FunctionalUser"
         rampup_load:
@@ -39,4 +22,4 @@ scenarios:
           max_users: 1
           increment_users: 1
           increment_every: 1s
-          duration: "30s"
+          duration: 30s
