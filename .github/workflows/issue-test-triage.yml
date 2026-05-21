@@ -30,6 +30,7 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         with:
+          github-token: ${{ secrets.AGENTIC_WORKFLOW_TOKEN != '' && secrets.AGENTIC_WORKFLOW_TOKEN || github.token }}
           script: |
             const title = process.env.ISSUE_TITLE || '';
             const body = process.env.ISSUE_BODY || '';
