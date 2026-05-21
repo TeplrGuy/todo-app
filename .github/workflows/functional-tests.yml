@@ -80,9 +80,10 @@ jobs:
           SKIPPED=0
           VALIDATE_LOG=$(mktemp)
           UPLOAD_LOG=$(mktemp)
-          trap 'rm -f "${VALIDATE_LOG}" "${UPLOAD_LOG}" "${PROJ_ZIP:-}"' EXIT
+          PROJ_DIR=$(mktemp -d)
+          trap 'rm -f "${VALIDATE_LOG}" "${UPLOAD_LOG}"; rm -rf "${PROJ_DIR}"' EXIT
           for f in "${FILES[@]}"; do
-            TEST_NAME=$(basename "${f}" .yml)
+            TEST_NAME=$(basename "${f}" | sed -E 's/\.(yml|yaml)$//')
             echo "  → Validating NeoLoad as-code compatibility for ${f}..."
             if ! neoload validate "${f}" > "${VALIDATE_LOG}" 2>&1; then
               echo "SKIP: ${f} is not NeoLoad as-code compatible."
@@ -90,12 +91,12 @@ jobs:
               SKIPPED=$((SKIPPED + 1))
               continue
             fi
-            # Use 'zip -j' (junk paths) so .yml sits at zip root — NeoLoad controller
-            # requires files at the archive root, not under a path prefix.
-            PROJ_ZIP=$(mktemp --suffix=.zip)
-            rm -f "${PROJ_ZIP}"  # mktemp creates empty file; remove so zip builds fresh
-            zip -j "${PROJ_ZIP}" "${f}"
-            echo "  → Configuring test settings and uploading ${f} (zip)..."
+            # NeoLoad SaaS requires a directory-based upload (not a pre-built zip).
+            # The controller scanner only locates the entry file when it is
+            # named exactly `default.yaml` — rename on copy regardless of source.
+            rm -f "${PROJ_DIR}"/*.yaml "${PROJ_DIR}"/*.yml 2>/dev/null || true
+            cp "${f}" "${PROJ_DIR}/default.yaml"
+            echo "  → Configuring test settings and uploading ${f} (directory)..."
             neoload test-settings delete "${TEST_NAME}" > /dev/null 2>&1 || true
             if ! neoload \
               test-settings \
@@ -103,13 +104,11 @@ jobs:
                 --scenario "Functional Smoke Suite" \
                 createorpatch "${TEST_NAME}" \
               project \
-                --path "${PROJ_ZIP}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
+                --path "${PROJ_DIR}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
               echo "FAIL: upload failed for ${f}"
               cat "${UPLOAD_LOG}"
-              rm -f "${PROJ_ZIP}"
               exit 1
             fi
-            rm -f "${PROJ_ZIP}"
             echo "  → Running ${TEST_NAME}..."
             ANY_TESTS_RAN=1
             EXIT_CODE=0

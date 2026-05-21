@@ -1,11 +1,17 @@
 name: "Todo App Functional Smoke"
 
+servers:
+  - name: todo_app
+    host: green-wave-0693f8c0f.7.azurestaticapps.net
+    scheme: https
+
 user_paths:
   - name: "Functional Smoke"
     actions:
       steps:
         - request:
-            url: https://green-wave-0693f8c0f.7.azurestaticapps.net/
+            url: /
+            server: todo_app
         - delay: 1s
 
 populations:
