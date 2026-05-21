@@ -7,11 +7,14 @@ import { Todo } from '../types/todo';
 describe('useTodos', () => {
   beforeEach(() => {
     localStorage.clear();
+    // Mark as already seeded so tests start from a known empty state
+    localStorage.setItem('todos_seeded', '1');
   });
 
-  it('initializes with empty list when storage is empty', () => {
+  it('initializes with seed data when storage is empty and not yet seeded', () => {
+    localStorage.removeItem('todos_seeded');
     const { result } = renderHook(() => useTodos());
-    expect(result.current.todos).toEqual([]);
+    expect(result.current.todos.length).toBeGreaterThan(0);
   });
 
   it('initializes from localStorage', () => {

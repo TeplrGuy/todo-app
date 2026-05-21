@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadTodos, saveTodos } from '../utils/storage';
+import { loadTodos, saveTodos, SEED_TODOS } from '../utils/storage';
 import { Todo } from '../types/todo';
 
 const mockTodo: Todo = {
@@ -14,7 +14,14 @@ describe('storage utils', () => {
     localStorage.clear();
   });
 
-  it('loadTodos returns [] when storage is empty', () => {
+  it('loadTodos seeds data on very first load (no prior storage)', () => {
+    const todos = loadTodos();
+    expect(todos).toEqual(SEED_TODOS);
+    expect(todos.length).toBe(SEED_TODOS.length);
+  });
+
+  it('loadTodos returns [] when storage is empty but already seeded', () => {
+    localStorage.setItem('todos_seeded', '1');
     expect(loadTodos()).toEqual([]);
   });
 
@@ -40,5 +47,17 @@ describe('storage utils', () => {
     const updated = { ...mockTodo, title: 'Updated' };
     saveTodos([updated]);
     expect(loadTodos()).toEqual([updated]);
+  });
+
+  it('SEED_TODOS contains both completed and active items', () => {
+    const completed = SEED_TODOS.filter((t) => t.completed);
+    const active = SEED_TODOS.filter((t) => !t.completed);
+    expect(completed.length).toBeGreaterThan(0);
+    expect(active.length).toBeGreaterThan(0);
+  });
+
+  it('SEED_TODOS items have unique ids', () => {
+    const ids = SEED_TODOS.map((t) => t.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
