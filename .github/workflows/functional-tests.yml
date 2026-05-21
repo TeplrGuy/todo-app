@@ -80,7 +80,7 @@ jobs:
           SKIPPED=0
           VALIDATE_LOG=$(mktemp)
           UPLOAD_LOG=$(mktemp)
-          trap 'rm -f "${VALIDATE_LOG}" "${UPLOAD_LOG}"' EXIT
+          trap 'rm -f "${VALIDATE_LOG}" "${UPLOAD_LOG}"; rm -rf "${PROJ_ZIP_DIR:-}"' EXIT
           for f in "${FILES[@]}"; do
             TEST_NAME=$(basename "${f}" .yml)
             echo "  → Validating NeoLoad as-code compatibility for ${f}..."
@@ -90,18 +90,24 @@ jobs:
               SKIPPED=$((SKIPPED + 1))
               continue
             fi
-            echo "  → Configuring test settings and uploading ${f}..."
+            # NeoLoad SaaS requires a ZIP upload, not a raw YAML file.
+            # Create a temp dir with just this file and let the CLI zip it.
+            PROJ_ZIP_DIR=$(mktemp -d)
+            cp "${f}" "${PROJ_ZIP_DIR}/neoload.yml"
+            echo "  → Configuring test settings and uploading ${f} (as zip)..."
             if ! neoload \
               test-settings \
                 --zone defaultzone \
                 --scenario "Functional Smoke Suite" \
                 createorpatch "${TEST_NAME}" \
               project \
-                --path "${f}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
+                --path "${PROJ_ZIP_DIR}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
               echo "FAIL: upload failed for ${f}"
               cat "${UPLOAD_LOG}"
+              rm -rf "${PROJ_ZIP_DIR}"
               exit 1
             fi
+            rm -rf "${PROJ_ZIP_DIR}"
             echo "  → Running ${TEST_NAME}..."
             ANY_TESTS_RAN=1
             EXIT_CODE=0
