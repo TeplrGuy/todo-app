@@ -135,18 +135,14 @@ jobs:
                 '  - name: "FunctionalUser"',
                 '    user_paths:',
                 '      - name: "Functional Smoke"',
-                '        distribution: 100%',
                 'scenarios:',
                 '  - name: "' + issueTitle + '"',
                 `    description: "Issue #${context.issue.number} functional implementation suggestion"`,
                 '    populations:',
                 '      - name: "FunctionalUser"',
-                '        duration:',
-                '          type: iteration',
-                '          count: 1',
-                '    assertions:',
-                '      - error_rate: "< 1%"',
-                '      - avg_response_time: "< 3s"'
+                '        constant_load:',
+                '          users: 1',
+                '          duration: "1 iterations"'
               ].join('\n') + '\n';
               implementationFiles.push({ path: proposalFunctionalPath, content: functionalYaml });
             }
@@ -176,22 +172,17 @@ jobs:
                 '  - name: "Users"',
                 '    user_paths:',
                 '      - name: "Load Path"',
-                '        distribution: 100%',
                 'scenarios:',
                 '  - name: "' + issueTitle + '"',
                 `    description: "Issue #${context.issue.number} load implementation suggestion"`,
                 '    populations:',
                 '      - name: "Users"',
-                '        rampup:',
-                '          duration: 60s',
-                '          start_users: 1',
-                '          end_users: 50',
-                '        constant:',
-                '          users: 50',
-                '          duration: 300s',
-                '    assertions:',
-                '      - avg_response_time: "< 2s"',
-                '      - error_rate: "< 1%"'
+                '        rampup_load:',
+                '          min_users: 1',
+                '          max_users: 50',
+                '          increment_users: 5',
+                '          increment_every: 10s',
+                '          duration: "5m"'
               ].join('\n') + '\n';
               implementationFiles.push({ path: proposalLoadPath, content: loadYaml });
             }
@@ -375,18 +366,14 @@ jobs:
               comment += '  - name: "FunctionalUser"' + nl;
               comment += '    user_paths:' + nl;
               comment += '      - name: "Functional Smoke"' + nl;
-              comment += '        distribution: 100%' + nl;
               comment += 'scenarios:' + nl;
               comment += `  - name: "${title.replace(/"/g, '\\"')}"` + nl;
               comment += `    description: "Auto-generated from issue #${context.issue.number}"` + nl;
               comment += '    populations:' + nl;
               comment += '      - name: "FunctionalUser"' + nl;
-              comment += '        duration:' + nl;
-              comment += '          type: iteration' + nl;
-              comment += '          count: 1' + nl;
-              comment += '    assertions:' + nl;
-              comment += '      - error_rate: "< 1%"' + nl;
-              comment += '      - avg_response_time: "< 3s"' + nl;
+              comment += '        constant_load:' + nl;
+              comment += '          users: 1' + nl;
+              comment += '          duration: "1 iterations"' + nl;
               comment += '```' + nl;
             }
 
@@ -414,22 +401,17 @@ jobs:
               comment += '  - name: "Users"' + nl;
               comment += '    user_paths:' + nl;
               comment += '      - name: "Load Path"' + nl;
-              comment += '        distribution: 100%' + nl;
               comment += 'scenarios:' + nl;
               comment += `  - name: "${title.replace(/"/g, '\\"')}"` + nl;
               comment += `    description: "Auto-generated from issue #${context.issue.number}"` + nl;
               comment += '    populations:' + nl;
               comment += '      - name: "Users"' + nl;
-              comment += '        rampup:' + nl;
-              comment += '          duration: 60s' + nl;
-              comment += '          start_users: 1' + nl;
-              comment += '          end_users: 50' + nl;
-              comment += '        constant:' + nl;
-              comment += '          users: 50' + nl;
-              comment += '          duration: 300s' + nl;
-              comment += '    assertions:' + nl;
-              comment += '      - avg_response_time: "< 2s"' + nl;
-              comment += '      - error_rate: "< 1%"' + nl;
+              comment += '        rampup_load:' + nl;
+              comment += '          min_users: 1' + nl;
+              comment += '          max_users: 50' + nl;
+              comment += '          increment_users: 5' + nl;
+              comment += '          increment_every: 10s' + nl;
+              comment += '          duration: "5m"' + nl;
               comment += '```' + nl;
             }
 

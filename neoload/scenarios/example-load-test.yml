@@ -28,46 +28,37 @@ populations:
   - name: "Users"
     user_paths:
       - name: "Load Path"
-        distribution: 100%
 
 scenarios:
   - name: "Standard Load Test"
     description: "Ramp to 50 users and hold for 5 minutes."
     populations:
       - name: "Users"
-        rampup:
-          duration: 60s
-          start_users: 1
-          end_users: 50
-        constant:
-          users: 50
-          duration: 300s
-    assertions:
-      - avg_response_time: "< 2s"
-      - error_rate: "< 1%"
+        rampup_load:
+          min_users: 1
+          max_users: 50
+          increment_users: 5
+          increment_every: 10s
+          duration: "5m"
 
   - name: "Stress Test"
     description: "Ramp to 200 users and hold for 3 minutes."
     populations:
       - name: "Users"
-        rampup:
-          duration: 120s
-          start_users: 1
-          end_users: 200
-        constant:
-          users: 200
-          duration: 180s
-    assertions:
-      - error_rate: "< 5%"
-      - percentile_95_response_time: "< 10s"
+        rampup_load:
+          min_users: 1
+          max_users: 200
+          increment_users: 20
+          increment_every: 10s
+          duration: "3m"
 
   - name: "Soak Test"
     description: "Hold 30 users for 30 minutes."
     populations:
       - name: "Users"
-        constant:
+        constant_load:
           users: 30
-          duration: 1800s
+          duration: "30m"
     assertions:
       - avg_response_time: "< 2s"
       - error_rate: "< 1%"

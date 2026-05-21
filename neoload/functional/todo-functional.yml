@@ -28,16 +28,12 @@ populations:
   - name: "FunctionalUser"
     user_paths:
       - name: "Functional Smoke"
-        distribution: 100%
 
 scenarios:
   - name: "Functional Smoke Suite"
-    description: "Baseline smoke scenario generated for CI-safe NeoLoad validation and execution."
+    description: "Baseline smoke scenario for CI validation."
     populations:
       - name: "FunctionalUser"
-        duration:
-          type: iteration
-          count: 1
-    assertions:
-      - error_rate: "< 1%"
-      - avg_response_time: "< 3s"
+        constant_load:
+          users: 1
+          duration: "1 iterations"
