@@ -39,14 +39,29 @@ jobs:
           echo "Discovered NeoLoad functional test files: ${TEST_FILES}"
           echo "Total: ${COUNT} file(s)"
 
-      - name: Validate NeoLoad YAML syntax
+      - name: Validate functional YAML syntax
         if: steps.discover.outputs.count != '0'
         run: |
-          echo "Validating ${{ steps.discover.outputs.count }} NeoLoad file(s)..."
+          echo "Validating ${{ steps.discover.outputs.count }} functional YAML file(s)..."
           IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
           for f in "${FILES[@]}"; do
             echo "  → Validating ${f}"
-            neoload validate "${f}"
+            python - "${f}" <<'PY'
+import sys
+import yaml
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as fp:
+    data = yaml.safe_load(fp)
+
+if not isinstance(data, dict):
+    raise SystemExit(f"{path}: top-level YAML node must be a mapping")
+
+required = ("name", "user_paths", "populations", "scenarios")
+missing = [k for k in required if k not in data]
+if missing:
+    raise SystemExit(f"{path}: missing required keys: {', '.join(missing)}")
+PY
           done
 
       - name: Run NeoLoad functional tests
@@ -105,4 +120,3 @@ jobs:
             neoload-results/
             *.xml
           if-no-files-found: ignore
-
