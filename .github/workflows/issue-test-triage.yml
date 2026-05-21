@@ -32,107 +32,211 @@ jobs:
           script: |
             const title = process.env.ISSUE_TITLE || '';
             const body = process.env.ISSUE_BODY || '';
-            const isLoadTest = title.includes('[LOAD TEST]') || body.toLowerCase().includes('load test');
-            const isFunctionalTest = title.includes('[FUNCTIONAL TEST]') || body.toLowerCase().includes('functional test');
+            const bodyLc = body.toLowerCase();
+            const titleLc = title.toLowerCase();
+            const labels = context.payload.issue.labels?.map((l) => (l.name || '').toLowerCase()) || [];
+            const hasLoadSignal =
+              title.includes('[LOAD TEST]') ||
+              bodyLc.includes('load test') ||
+              labels.includes('load-test');
+            const hasFunctionalSignal =
+              title.includes('[FUNCTIONAL TEST]') ||
+              bodyLc.includes('functional test') ||
+              labels.includes('functional-test');
 
-            let comment = `## 🤖 Automated Test Triage\n\n`;
-            comment += `**Issue:** ${title}\n\n`;
-            comment += `**Detected test type(s):**\n`;
-            if (isLoadTest) comment += `- 🏋️ Load Test (NeoLoad)\n`;
-            if (isFunctionalTest) comment += `- ✅ Functional Test\n`;
-            if (!isLoadTest && !isFunctionalTest) comment += `- 🔍 General Test Request\n`;
+            const isLoadTest = hasLoadSignal;
+            const isFunctionalTest = hasFunctionalSignal || !hasLoadSignal;
 
-            comment += `\n### Proposed Test Cases\n\n`;
+            const slug = title
+              .toLowerCase()
+              .replace(/\[[^\]]*\]/g, ' ')
+              .replace(/[^a-z0-9]+/g, '_')
+              .replace(/^_+|_+$/g, '')
+              .slice(0, 70) || `issue_${context.issue.number}`;
 
-            if (isFunctionalTest || (!isLoadTest && !isFunctionalTest)) {
-              comment += `#### NeoLoad Functional Test Configuration\n`;
-              comment += `Proposed NeoLoad functional test scenario for this issue:\n\n`;
-              comment += `\`\`\`yaml\n`;
-              comment += `# neoload/functional/${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.yml\n`;
-              comment += `name: "${title}"\n\n`;
-              comment += `variables:\n`;
-              comment += `  - name: BASE_URL\n`;
-              comment += `    value: "http://localhost:1420"\n\n`;
-              comment += `user_paths:\n`;
-              comment += `  - name: "Verify ${title}"\n`;
-              comment += `    actions:\n`;
-              comment += `      running:\n`;
-              comment += `        steps:\n`;
-              comment += `          - navigate:\n`;
-              comment += `              url: "\${BASE_URL}"\n`;
-              comment += `              sla:\n`;
-              comment += `                response_time: "< 3s"\n`;
-              comment += `          # TODO: Add steps based on: ${title}\n`;
-              comment += `          # Issue details: ${body.substring(0, 200)}\n`;
-              comment += `          - assert:\n`;
-              comment += `              selector: "body"\n`;
-              comment += `              text: "Todo App"\n`;
-              comment += `              description: "App is reachable"\n\n`;
-              comment += `populations:\n`;
-              comment += `  - name: "FunctionalUser"\n`;
-              comment += `    user_paths:\n`;
-              comment += `      - name: "Verify ${title}"\n`;
-              comment += `        distribution: 100%\n\n`;
-              comment += `scenarios:\n`;
-              comment += `  - name: "${title}"\n`;
-              comment += `    description: "Auto-generated from GitHub issue #${{ github.event.issue.number }}"\n`;
-              comment += `    populations:\n`;
-              comment += `      - name: "FunctionalUser"\n`;
-              comment += `        duration:\n`;
-              comment += `          type: iteration\n`;
-              comment += `          count: 1\n`;
-              comment += `    assertions:\n`;
-              comment += `      - error_rate: "< 1%"\n`;
-              comment += `      - avg_response_time: "< 3s"\n`;
-              comment += `\`\`\`\n\n`;
+            const tokens = slug.split('_').filter((t) => t.length >= 4);
+            const defaultBranch = context.payload.repository.default_branch;
+            const branch = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: defaultBranch
+            });
+
+            const tree = await github.rest.git.getTree({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tree_sha: branch.data.commit.commit.tree.sha,
+              recursive: 'true'
+            });
+
+            const allPaths = (tree.data.tree || [])
+              .filter((n) => n.type === 'blob')
+              .map((n) => n.path);
+
+            const functionalFiles = allPaths.filter((p) => /^neoload\/functional\/.*\.ya?ml$/i.test(p));
+            const loadFiles = allPaths.filter((p) => /^neoload\/scenarios\/.*\.ya?ml$/i.test(p));
+
+            const hasTokenOverlap = (basename) => {
+              if (!tokens.length) return false;
+              const parts = basename.toLowerCase().replace(/\.ya?ml$/i, '').split(/[^a-z0-9]+/).filter(Boolean);
+              const overlap = tokens.filter((t) => parts.includes(t));
+              return overlap.length >= Math.min(2, tokens.length);
+            };
+
+            const functionalPath = `neoload/functional/${slug}.yml`;
+            const loadPath = `neoload/scenarios/${slug}.yml`;
+
+            const functionalExists = functionalFiles.includes(functionalPath);
+            const loadExists = loadFiles.includes(loadPath);
+
+            const similarFunctional = functionalFiles.filter((p) => hasTokenOverlap(p.split('/').pop() || ''));
+            const similarLoad = loadFiles.filter((p) => hasTokenOverlap(p.split('/').pop() || ''));
+
+            const nl = '\n';
+            let comment = '<!-- neoload-triage:v2 -->' + nl + nl;
+            comment += '## Automated NeoLoad Test Triage' + nl + nl;
+            comment += `Issue: ${title}` + nl + nl;
+            comment += 'Detected test type(s):' + nl;
+            if (isFunctionalTest) comment += '- Functional test request' + nl;
+            if (isLoadTest) comment += '- Load test request' + nl;
+            if (!isFunctionalTest && !isLoadTest) comment += '- General test request (treated as functional by default)' + nl;
+
+            comment += nl + '### Existing Coverage Check' + nl + nl;
+            if (isFunctionalTest) {
+              comment += functionalExists
+                ? `- Functional file already exists: ${functionalPath}` + nl
+                : `- No exact functional file found for slug: ${functionalPath}` + nl;
+              if (similarFunctional.length) {
+                comment += '- Similar functional files:' + nl;
+                for (const p of similarFunctional.slice(0, 5)) comment += `  - ${p}` + nl;
+              }
             }
-
             if (isLoadTest) {
-              comment += `#### NeoLoad Load Test Configuration\n`;
-              comment += `Proposed NeoLoad test scenario for this issue:\n\n`;
-              comment += `\`\`\`yaml\n`;
-              comment += `# neoload/scenarios/${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.yml\n`;
-              comment += `scenarios:\n`;
-              comment += `  - name: "${title}"\n`;
-              comment += `    description: "Auto-generated from GitHub issue #${{ github.event.issue.number }}"\n`;
-              comment += `    populations:\n`;
-              comment += `      - name: "Users"\n`;
-              comment += `        rampup:\n`;
-              comment += `          duration: 60s\n`;
-              comment += `          start_users: 1\n`;
-              comment += `          end_users: 50\n`;
-              comment += `        constant:\n`;
-              comment += `          users: 50\n`;
-              comment += `          duration: 300s\n`;
-              comment += `    assertions:\n`;
-              comment += `      - avg_response_time: "< 2s"\n`;
-              comment += `      - error_rate: "< 1%"\n`;
-              comment += `\`\`\`\n\n`;
-              comment += `**NeoLoad Resources:**\n`;
-              comment += `- [NeoLoad Performance Testing](https://www.tricentis.com/lp/neoload-performance-load-testing-ppc)\n`;
-              comment += `- See \`neoload/\` directory for test configurations\n\n`;
+              comment += loadExists
+                ? `- Load file already exists: ${loadPath}` + nl
+                : `- No exact load file found for slug: ${loadPath}` + nl;
+              if (similarLoad.length) {
+                comment += '- Similar load files:' + nl;
+                for (const p of similarLoad.slice(0, 5)) comment += `  - ${p}` + nl;
+              }
             }
 
-            comment += `### Next Steps\n`;
-            comment += `1. Review the proposed test cases above\n`;
-            comment += `2. Create a PR with the implemented tests:\n`;
-            comment += `   - Functional tests → \`neoload/functional/\`\n`;
-            comment += `   - Load tests → \`neoload/scenarios/\`\n`;
-            comment += `3. The CI pipeline auto-discovers any \`*.yml\` added to \`neoload/functional/\`\n`;
-            comment += `4. Label this issue with \`tests-proposed\` when done reviewing\n\n`;
-            comment += `---\n`;
-            comment += `*Auto-triaged by GitHub Actions · [View workflow](../actions/workflows/issue-test-triage.yml)*\n`;
+            if (isFunctionalTest && !functionalExists) {
+              comment += nl + '### Functional Baseline (NeoLoad as-code compatible)' + nl + nl;
+              comment += '```yaml' + nl;
+              comment += `# ${functionalPath}` + nl;
+              comment += `name: "${title.replace(/"/g, '\\"')}"` + nl;
+              comment += 'variables:' + nl;
+              comment += '  - name: BASE_URL' + nl;
+              comment += '    value: "http://localhost:1420"' + nl;
+              comment += 'user_paths:' + nl;
+              comment += '  - name: "Functional Smoke"' + nl;
+              comment += '    actions:' + nl;
+              comment += '      steps:' + nl;
+              comment += '        - think_time: 1s' + nl;
+              comment += 'populations:' + nl;
+              comment += '  - name: "FunctionalUser"' + nl;
+              comment += '    user_paths:' + nl;
+              comment += '      - name: "Functional Smoke"' + nl;
+              comment += '        distribution: 100%' + nl;
+              comment += 'scenarios:' + nl;
+              comment += `  - name: "${title.replace(/"/g, '\\"')}"` + nl;
+              comment += `    description: "Auto-generated from issue #${context.issue.number}"` + nl;
+              comment += '    populations:' + nl;
+              comment += '      - name: "FunctionalUser"' + nl;
+              comment += '        duration:' + nl;
+              comment += '          type: iteration' + nl;
+              comment += '          count: 1' + nl;
+              comment += '    assertions:' + nl;
+              comment += '      - error_rate: "< 1%"' + nl;
+              comment += '      - avg_response_time: "< 3s"' + nl;
+              comment += '```' + nl;
+            }
 
-            await github.rest.issues.createComment({
+            if (isLoadTest && !loadExists) {
+              comment += nl + '### Load Baseline (NeoLoad as-code compatible)' + nl + nl;
+              comment += '```yaml' + nl;
+              comment += `# ${loadPath}` + nl;
+              comment += `name: "${title.replace(/"/g, '\\"')}"` + nl;
+              comment += 'variables:' + nl;
+              comment += '  - name: BASE_URL' + nl;
+              comment += '    value: "http://localhost:1420"' + nl;
+              comment += 'user_paths:' + nl;
+              comment += '  - name: "Load Path"' + nl;
+              comment += '    actions:' + nl;
+              comment += '      steps:' + nl;
+              comment += '        - think_time: 1s' + nl;
+              comment += 'populations:' + nl;
+              comment += '  - name: "Users"' + nl;
+              comment += '    user_paths:' + nl;
+              comment += '      - name: "Load Path"' + nl;
+              comment += '        distribution: 100%' + nl;
+              comment += 'scenarios:' + nl;
+              comment += `  - name: "${title.replace(/"/g, '\\"')}"` + nl;
+              comment += `    description: "Auto-generated from issue #${context.issue.number}"` + nl;
+              comment += '    populations:' + nl;
+              comment += '      - name: "Users"' + nl;
+              comment += '        rampup:' + nl;
+              comment += '          duration: 60s' + nl;
+              comment += '          start_users: 1' + nl;
+              comment += '          end_users: 50' + nl;
+              comment += '        constant:' + nl;
+              comment += '          users: 50' + nl;
+              comment += '          duration: 300s' + nl;
+              comment += '    assertions:' + nl;
+              comment += '      - avg_response_time: "< 2s"' + nl;
+              comment += '      - error_rate: "< 1%"' + nl;
+              comment += '```' + nl;
+            }
+
+            comment += nl + '### Next Steps' + nl + nl;
+            if ((isFunctionalTest && functionalExists) || (isLoadTest && loadExists)) {
+              comment += '1. Reuse the existing NeoLoad file(s) above where possible.' + nl;
+              comment += '2. If a new variant is required, create a new issue with explicit differentiation (endpoint, path, data volume, or SLA).' + nl;
+            } else {
+              comment += '1. Use the baseline YAML above as the starting point.' + nl;
+              comment += '2. Expand user path steps based on acceptance criteria and current app architecture.' + nl;
+              comment += '3. Commit under neoload/functional/ or neoload/scenarios/ and open a PR.' + nl;
+            }
+            comment += '4. Functional CI auto-discovers neoload/functional/*.yml.' + nl + nl;
+            comment += 'Auto-triaged by GitHub Actions.' + nl;
+
+            const existingComments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: comment
+              per_page: 100
             });
+
+            const marker = '<!-- neoload-triage:v2 -->';
+            const existingBotComment = existingComments.data.find(
+              (c) => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker)
+            );
+
+            if (existingBotComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingBotComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
+            const labelsToAdd = ['tests-proposed'];
+            if ((isFunctionalTest && functionalExists) || (isLoadTest && loadExists)) {
+              labelsToAdd.push('tests-existing');
+            }
 
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              labels: ['tests-proposed']
+              labels: labelsToAdd
             });

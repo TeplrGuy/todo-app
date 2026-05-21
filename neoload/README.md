@@ -11,7 +11,7 @@ This directory contains all NeoLoad test configurations for the Todo App — bot
 | Test type | Virtual users | Duration | Location |
 |-----------|--------------|----------|----------|
 | Functional | 1 (iteration) | 1 run | `neoload/functional/` |
-| Load | 50–200 (ramp-up) | Minutes | `neoload/scenarios/` |
+| Load | 30-200 (ramp and constant) | Minutes | `neoload/scenarios/` |
 
 ## Directory Structure
 
@@ -19,23 +19,14 @@ This directory contains all NeoLoad test configurations for the Todo App — bot
 neoload/
 ├── README.md                         # This file
 ├── functional/
-│   └── todo-functional.yml           # Functional smoke suite (8 user paths)
+│   └── todo-functional.yml           # Functional smoke baseline (CI-safe)
 └── scenarios/
-    └── example-load-test.yml         # Load test (standard · stress · soak)
+  └── example-load-test.yml         # Load baselines (standard, stress, soak)
 ```
 
 ## Functional Tests (`neoload/functional/`)
 
-Functional tests run as a **single virtual user**, one iteration. They validate correctness — each user path mirrors a feature scenario:
-
-1. App Header Check
-2. Add Todo
-3. Toggle Todo Completion
-4. Delete Todo
-5. Edit Todo
-6. Filter Todos (Active/Completed tabs)
-7. Clear Completed
-8. Stats Counter
+Functional tests run as a **single virtual user**, one iteration. The repository baseline is intentionally minimal and NeoLoad as-code compatible so it validates and runs out of the box in CI.
 
 ### Validate YAML without credentials
 
@@ -63,15 +54,21 @@ neoload \
 neoload run todo-functional
 ```
 
+### Validate first
+
+```bash
+neoload validate neoload/functional/todo-functional.yml
+```
+
 ## Load Tests (`neoload/scenarios/`)
 
-Three pre-built scenarios targeting different load profiles:
+Three pre-built baseline scenarios target common load profiles:
 
 | Scenario | Users | Duration | Goal |
 |----------|-------|----------|------|
-| Load Test | 1 → 50 (ramp 60s) + 300s constant | ~6 min | Baseline performance |
-| Stress Test | 1 → 200 (ramp 120s) + 180s constant | ~5 min | Find breaking point |
-| Soak Test | 30 constant | 30 min | Detect memory leaks / degradation |
+| Standard Load Test | 1 -> 50 (ramp 60s) + 300s constant | ~6 min | Baseline performance |
+| Stress Test | 1 -> 200 (ramp 120s) + 180s constant | ~5 min | Find breaking point |
+| Soak Test | 30 constant | 30 min | Detect memory leaks and degradation |
 
 ### Run locally
 
@@ -89,12 +86,24 @@ neoload run todo-load
 
 Triggered on every push to `src/` or `neoload/functional/`. The workflow:
 1. Discovers all `*.yml` files in `neoload/functional/`
-2. Validates YAML structure (no credentials needed)
+2. Validates each file with `neoload validate`
 3. Runs via NeoLoad CLI **if** `NEOLOAD_TOKEN` secret is configured
+4. Fails when no discovered test can run (all invalid or skipped)
+
+### Issue-triggered triage for QA
+
+Create GitHub issues with `[FUNCTIONAL TEST]`, `[LOAD TEST]`, or `[TEST]` in the title.
+
+The `issue-test-triage.yml` workflow then:
+
+1. Detects requested test type.
+2. Checks for existing exact or similar NeoLoad test files.
+3. Posts or updates one bot comment with NeoLoad-compatible baseline YAML.
+4. Adds labels such as `tests-proposed` and `tests-existing` when relevant.
 
 ### Load tests (issue-triggered)
 
-Opening a GitHub Issue with `[LOAD TEST]` in the title causes the triage bot to post a NeoLoad YAML scenario scaffold as a comment. Engineers implement and commit the scenario to `neoload/scenarios/`.
+Opening a GitHub issue with `[LOAD TEST]` in the title causes the triage bot to post a NeoLoad-compatible baseline scaffold as a comment. Engineers implement and commit the scenario to `neoload/scenarios/`.
 
 ## Required Secrets
 

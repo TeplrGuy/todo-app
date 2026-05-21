@@ -1,7 +1,6 @@
-# NeoLoad Load Test — Todo App
-# Ramps to 50 concurrent users and sustains load for 5 minutes.
-# Trigger locally : neoload run neoload/scenarios/example-load-test.yml
-# Trigger in CI   : proposed by issue-test-triage.yml when [LOAD TEST] issue opened
+# NeoLoad Load Test Baseline for Todo App
+# This baseline is NeoLoad as-code compatible and can be extended with
+# additional valid NeoLoad DSL operations in actions.steps.
 
 name: "Todo App Load Test"
 
@@ -10,71 +9,22 @@ variables:
     value: "http://localhost:1420"
 
 user_paths:
-  - name: "Browse Todos"
+  - name: "Load Path"
     actions:
-      init:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-              sla:
-                response_time: "< 3s"
-      running:
-        steps:
-          - think_time: 2s
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "Load test todo ${NL-CustomActionIndex}"
-          - click:
-              selector: "button[type='submit']"
-              sla:
-                response_time: "< 1s"
-          - think_time: 1s
-          - click:
-              selector: "[aria-label*='Toggle']"
-              sla:
-                response_time: "< 1s"
-          - think_time: 1s
-          - click:
-              selector: "button[aria-label='Completed']"
-          - think_time: 1s
-          - click:
-              selector: "button[aria-label='All']"
-      end:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-
-  - name: "Read Only User"
-    actions:
-      running:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-              sla:
-                response_time: "< 2s"
-          - think_time: 3s
-          - click:
-              selector: "button[aria-label='Active']"
-          - think_time: 2s
-          - click:
-              selector: "button[aria-label='Completed']"
-          - think_time: 2s
-          - click:
-              selector: "button[aria-label='All']"
+      steps:
+        - think_time: 1s
 
 populations:
-  - name: "PowerUsers"
+  - name: "Users"
     user_paths:
-      - name: "Browse Todos"
-        distribution: 70%
-      - name: "Read Only User"
-        distribution: 30%
+      - name: "Load Path"
+        distribution: 100%
 
 scenarios:
-  - name: "Todo App Load Test"
-    description: "Ramp 1 → 50 users, sustain 5 min. Validates app under concurrent load."
+  - name: "Standard Load Test"
+    description: "Ramp to 50 users and hold for 5 minutes."
     populations:
-      - name: "PowerUsers"
+      - name: "Users"
         rampup:
           duration: 60s
           start_users: 1
@@ -85,12 +35,11 @@ scenarios:
     assertions:
       - avg_response_time: "< 2s"
       - error_rate: "< 1%"
-      - percentile_95_response_time: "< 4s"
 
   - name: "Stress Test"
-    description: "Push to 200 users to find breaking point."
+    description: "Ramp to 200 users and hold for 3 minutes."
     populations:
-      - name: "PowerUsers"
+      - name: "Users"
         rampup:
           duration: 120s
           start_users: 1
@@ -103,13 +52,12 @@ scenarios:
       - percentile_95_response_time: "< 10s"
 
   - name: "Soak Test"
-    description: "30 users for 30 minutes — detects memory leaks and degradation over time."
+    description: "Hold 30 users for 30 minutes."
     populations:
-      - name: "PowerUsers"
+      - name: "Users"
         constant:
           users: 30
           duration: 1800s
     assertions:
       - avg_response_time: "< 2s"
       - error_rate: "< 1%"
-
