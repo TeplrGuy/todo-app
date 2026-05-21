@@ -1,0 +1,138 @@
+name: Test Request Triage
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  triage:
+    name: Triage Test Request
+    if: |
+      contains(github.event.issue.labels.*.name, 'test-request') ||
+      contains(github.event.issue.title, '[TEST]') ||
+      contains(github.event.issue.title, '[LOAD TEST]') ||
+      contains(github.event.issue.title, '[FUNCTIONAL TEST]')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Analyze issue and propose tests
+        uses: actions/github-script@v7
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        with:
+          script: |
+            const title = process.env.ISSUE_TITLE || '';
+            const body = process.env.ISSUE_BODY || '';
+            const isLoadTest = title.includes('[LOAD TEST]') || body.toLowerCase().includes('load test');
+            const isFunctionalTest = title.includes('[FUNCTIONAL TEST]') || body.toLowerCase().includes('functional test');
+
+            let comment = `## 🤖 Automated Test Triage\n\n`;
+            comment += `**Issue:** ${title}\n\n`;
+            comment += `**Detected test type(s):**\n`;
+            if (isLoadTest) comment += `- 🏋️ Load Test (NeoLoad)\n`;
+            if (isFunctionalTest) comment += `- ✅ Functional Test\n`;
+            if (!isLoadTest && !isFunctionalTest) comment += `- 🔍 General Test Request\n`;
+
+            comment += `\n### Proposed Test Cases\n\n`;
+
+            if (isFunctionalTest || (!isLoadTest && !isFunctionalTest)) {
+              comment += `#### NeoLoad Functional Test Configuration\n`;
+              comment += `Proposed NeoLoad functional test scenario for this issue:\n\n`;
+              comment += `\`\`\`yaml\n`;
+              comment += `# neoload/functional/${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.yml\n`;
+              comment += `name: "${title}"\n\n`;
+              comment += `variables:\n`;
+              comment += `  - name: BASE_URL\n`;
+              comment += `    value: "http://localhost:1420"\n\n`;
+              comment += `user_paths:\n`;
+              comment += `  - name: "Verify ${title}"\n`;
+              comment += `    actions:\n`;
+              comment += `      running:\n`;
+              comment += `        steps:\n`;
+              comment += `          - navigate:\n`;
+              comment += `              url: "\${BASE_URL}"\n`;
+              comment += `              sla:\n`;
+              comment += `                response_time: "< 3s"\n`;
+              comment += `          # TODO: Add steps based on: ${title}\n`;
+              comment += `          # Issue details: ${body.substring(0, 200)}\n`;
+              comment += `          - assert:\n`;
+              comment += `              selector: "body"\n`;
+              comment += `              text: "Todo App"\n`;
+              comment += `              description: "App is reachable"\n\n`;
+              comment += `populations:\n`;
+              comment += `  - name: "FunctionalUser"\n`;
+              comment += `    user_paths:\n`;
+              comment += `      - name: "Verify ${title}"\n`;
+              comment += `        distribution: 100%\n\n`;
+              comment += `scenarios:\n`;
+              comment += `  - name: "${title}"\n`;
+              comment += `    description: "Auto-generated from GitHub issue #${{ github.event.issue.number }}"\n`;
+              comment += `    populations:\n`;
+              comment += `      - name: "FunctionalUser"\n`;
+              comment += `        duration:\n`;
+              comment += `          type: iteration\n`;
+              comment += `          count: 1\n`;
+              comment += `    assertions:\n`;
+              comment += `      - error_rate: "< 1%"\n`;
+              comment += `      - avg_response_time: "< 3s"\n`;
+              comment += `\`\`\`\n\n`;
+            }
+
+            if (isLoadTest) {
+              comment += `#### NeoLoad Load Test Configuration\n`;
+              comment += `Proposed NeoLoad test scenario for this issue:\n\n`;
+              comment += `\`\`\`yaml\n`;
+              comment += `# neoload/scenarios/${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.yml\n`;
+              comment += `scenarios:\n`;
+              comment += `  - name: "${title}"\n`;
+              comment += `    description: "Auto-generated from GitHub issue #${{ github.event.issue.number }}"\n`;
+              comment += `    populations:\n`;
+              comment += `      - name: "Users"\n`;
+              comment += `        rampup:\n`;
+              comment += `          duration: 60s\n`;
+              comment += `          start_users: 1\n`;
+              comment += `          end_users: 50\n`;
+              comment += `        constant:\n`;
+              comment += `          users: 50\n`;
+              comment += `          duration: 300s\n`;
+              comment += `    assertions:\n`;
+              comment += `      - avg_response_time: "< 2s"\n`;
+              comment += `      - error_rate: "< 1%"\n`;
+              comment += `\`\`\`\n\n`;
+              comment += `**NeoLoad Resources:**\n`;
+              comment += `- [NeoLoad Performance Testing](https://www.tricentis.com/lp/neoload-performance-load-testing-ppc)\n`;
+              comment += `- See \`neoload/\` directory for test configurations\n\n`;
+            }
+
+            comment += `### Next Steps\n`;
+            comment += `1. Review the proposed test cases above\n`;
+            comment += `2. Create a PR with the implemented tests:\n`;
+            comment += `   - Functional tests → \`neoload/functional/\`\n`;
+            comment += `   - Load tests → \`neoload/scenarios/\`\n`;
+            comment += `3. The CI pipeline auto-discovers any \`*.yml\` added to \`neoload/functional/\`\n`;
+            comment += `4. Label this issue with \`tests-proposed\` when done reviewing\n\n`;
+            comment += `---\n`;
+            comment += `*Auto-triaged by GitHub Actions · [View workflow](../actions/workflows/issue-test-triage.yml)*\n`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['tests-proposed']
+            });

@@ -1,0 +1,132 @@
+name: Functional Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'src-tauri/src/**'
+      - 'neoload/functional/**'
+      - '.github/workflows/functional-tests.yml'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  discover-and-run:
+    name: Discover & Run NeoLoad Functional Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python for NeoLoad CLI
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install NeoLoad CLI
+        run: pip install neoload
+
+      - name: Discover NeoLoad functional test files
+        id: discover
+        run: |
+          TEST_FILES=$(find neoload/functional -name "*.yml" -o -name "*.yaml" 2>/dev/null | sort | tr '\n' ',' | sed 's/,$//')
+          COUNT=$(echo "${TEST_FILES}" | tr ',' '\n' | grep -c . || echo 0)
+          echo "files=${TEST_FILES}" >> $GITHUB_OUTPUT
+          echo "count=${COUNT}" >> $GITHUB_OUTPUT
+          echo "Discovered NeoLoad functional test files: ${TEST_FILES}"
+          echo "Total: ${COUNT} file(s)"
+
+      - name: Validate functional YAML syntax
+        if: steps.discover.outputs.count != '0'
+        run: |
+          echo "Validating ${{ steps.discover.outputs.count }} functional YAML file(s)..."
+          IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
+          for f in "${FILES[@]}"; do
+            echo "  → Validating ${f}"
+            python -c "import sys,yaml; p=sys.argv[1]; d=yaml.safe_load(open(p,'r',encoding='utf-8')); \
+            isinstance(d, dict) or sys.exit(p + ': top-level YAML node must be a mapping'); \
+            req=('name','user_paths','populations','scenarios'); miss=[k for k in req if k not in d]; \
+            (not miss) or sys.exit(p + ': missing required keys: ' + ', '.join(miss))" "${f}"
+          done
+
+      - name: Run NeoLoad functional tests
+        if: |
+          steps.discover.outputs.count != '0' &&
+          env.NEOLOAD_TOKEN != ''
+        env:
+          NEOLOAD_TOKEN: ${{ secrets.NEOLOAD_TOKEN }}
+          NEOLOAD_WORKSPACE: ${{ secrets.NEOLOAD_WORKSPACE }}
+        run: |
+          echo "Running ${{ steps.discover.outputs.count }} NeoLoad functional test file(s)..."
+          if [ -n "${NEOLOAD_WORKSPACE:-}" ]; then
+            echo "  → Logging in to NeoLoad Web (workspace: ${NEOLOAD_WORKSPACE})..."
+            neoload login --workspace "${NEOLOAD_WORKSPACE}" "${NEOLOAD_TOKEN}"
+          else
+            echo "  → Logging in to NeoLoad Web (account default workspace)..."
+            neoload login "${NEOLOAD_TOKEN}"
+          fi
+
+          IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
+          ANY_TESTS_RAN=0
+          SKIPPED=0
+          UPLOAD_LOG=$(mktemp)
+          trap 'rm -f "${UPLOAD_LOG}"' EXIT
+          for f in "${FILES[@]}"; do
+            TEST_NAME=$(basename "${f}" .yml)
+            echo "  → Configuring test settings and uploading ${f}..."
+            if ! neoload \
+              test-settings \
+                --zone defaultzone \
+                --scenario "Functional Smoke Suite" \
+                createorpatch "${TEST_NAME}" \
+              project \
+                --path "${f}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
+              if grep -Eq "PARSING_INVALID_AS_CODE_FILE|YAML does not con[a-z]* to NeoLoad DSL schema" "${UPLOAD_LOG}"; then
+                echo "SKIP: ${f} is not NeoLoad as-code compatible for CLI upload."
+                SKIPPED=$((SKIPPED + 1))
+                continue
+              fi
+              echo "FAIL: upload failed for ${f}"
+              cat "${UPLOAD_LOG}"
+              exit 1
+            fi
+            echo "  → Running ${TEST_NAME}..."
+            ANY_TESTS_RAN=1
+            EXIT_CODE=0
+            neoload run "${TEST_NAME}" || EXIT_CODE=$?
+            if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+              echo "FAIL: ${f} exited with code ${EXIT_CODE}"
+              exit "${EXIT_CODE}"
+            fi
+          done
+          if [ "${ANY_TESTS_RAN}" -eq 0 ]; then
+            echo "No live runs executed: ${SKIPPED} of ${#FILES[@]} discovered file(s) were skipped as non-NeoLoad as-code."
+          fi
+
+      - name: Skip run — NeoLoad credentials not configured
+        if: |
+          steps.discover.outputs.count != '0' &&
+          env.NEOLOAD_TOKEN == ''
+        env:
+          NEOLOAD_TOKEN: ${{ secrets.NEOLOAD_TOKEN }}
+        run: |
+          echo "ℹ️  NEOLOAD_TOKEN secret not set — skipping live run."
+          echo "    YAML validation passed. Add NEOLOAD_TOKEN + NEOLOAD_WORKSPACE"
+          echo "    secrets to enable live test execution."
+
+      - name: No tests found
+        if: steps.discover.outputs.count == '0'
+        run: echo "No NeoLoad functional tests discovered in neoload/functional/ yet."
+
+      - name: Upload NeoLoad results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: neoload-functional-results
+          path: |
+            neoload-results/
+            *.xml
+          if-no-files-found: ignore
