@@ -80,7 +80,7 @@ jobs:
           SKIPPED=0
           VALIDATE_LOG=$(mktemp)
           UPLOAD_LOG=$(mktemp)
-          trap 'rm -f "${VALIDATE_LOG}" "${UPLOAD_LOG}"; rm -rf "${PROJ_ZIP_DIR:-}"' EXIT
+          trap 'rm -f "${VALIDATE_LOG}" "${UPLOAD_LOG}" "${PROJ_ZIP:-}"' EXIT
           for f in "${FILES[@]}"; do
             TEST_NAME=$(basename "${f}" .yml)
             echo "  → Validating NeoLoad as-code compatibility for ${f}..."
@@ -90,12 +90,11 @@ jobs:
               SKIPPED=$((SKIPPED + 1))
               continue
             fi
-            # NeoLoad SaaS requires a ZIP upload, not a raw YAML file.
-            # Create a temp dir with just this file and let the CLI zip it.
-            PROJ_ZIP_DIR=$(mktemp -d)
-            cp "${f}" "${PROJ_ZIP_DIR}/neoload.yml"
-            echo "  → Configuring test settings and uploading ${f} (as zip)..."
-            # Delete existing test settings to avoid zone-type mismatch when recreating.
+            # Use 'zip -j' (junk paths) so .yml sits at zip root — NeoLoad controller
+            # requires files at the archive root, not under a path prefix.
+            PROJ_ZIP=$(mktemp --suffix=.zip)
+            zip -j "${PROJ_ZIP}" "${f}"
+            echo "  → Configuring test settings and uploading ${f} (zip)..."
             neoload test-settings delete "${TEST_NAME}" > /dev/null 2>&1 || true
             if ! neoload \
               test-settings \
@@ -103,13 +102,13 @@ jobs:
                 --scenario "Functional Smoke Suite" \
                 createorpatch "${TEST_NAME}" \
               project \
-                --path "${PROJ_ZIP_DIR}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
+                --path "${PROJ_ZIP}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
               echo "FAIL: upload failed for ${f}"
               cat "${UPLOAD_LOG}"
-              rm -rf "${PROJ_ZIP_DIR}"
+              rm -f "${PROJ_ZIP}"
               exit 1
             fi
-            rm -rf "${PROJ_ZIP_DIR}"
+            rm -f "${PROJ_ZIP}"
             echo "  → Running ${TEST_NAME}..."
             ANY_TESTS_RAN=1
             EXIT_CODE=0
