@@ -71,14 +71,16 @@ jobs:
 
           IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
           RAN=0
+          SKIPPED=0
           VALIDATE_LOG=$(mktemp)
           trap 'rm -f "${VALIDATE_LOG}"' EXIT
           for f in "${FILES[@]}"; do
-            EXIT_CODE=0
             echo "  → Checking NeoLoad as-code compatibility for ${f}..."
             if ! neoload validate "${f}" > "${VALIDATE_LOG}" 2>&1; then
               echo "SKIP: ${f} is not NeoLoad as-code compatible and will not be executed."
+              echo "See validation output below:"
               head -n 20 "${VALIDATE_LOG}" || true
+              SKIPPED=$((SKIPPED + 1))
               continue
             fi
             TEST_NAME=$(basename "${f}" .yml)
@@ -92,6 +94,7 @@ jobs:
                 --path "${f}" upload "${TEST_NAME}"
             echo "  → Running ${TEST_NAME}..."
             RAN=1
+            EXIT_CODE=0
             neoload run "${TEST_NAME}" || EXIT_CODE=$?
             if [ "${EXIT_CODE:-0}" -ne 0 ]; then
               echo "FAIL: ${f} exited with code ${EXIT_CODE}"
@@ -99,7 +102,7 @@ jobs:
             fi
           done
           if [ "${RAN}" -eq 0 ]; then
-            echo "No NeoLoad as-code compatible functional files found for live run."
+            echo "No live run executed: ${SKIPPED} of ${#FILES[@]} discovered file(s) were skipped as non-NeoLoad as-code."
           fi
 
       - name: Skip run — NeoLoad credentials not configured
