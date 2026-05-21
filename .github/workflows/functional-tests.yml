@@ -61,11 +61,17 @@ jobs:
           NEOLOAD_WORKSPACE: ${{ secrets.NEOLOAD_WORKSPACE }}
         run: |
           echo "Running ${{ steps.discover.outputs.count }} NeoLoad functional test file(s)..."
+          LOGIN_OK=0
           if [ -n "${NEOLOAD_WORKSPACE:-}" ]; then
             echo "  → Logging in to NeoLoad Web (workspace: ${NEOLOAD_WORKSPACE})..."
-            neoload login --workspace "${NEOLOAD_WORKSPACE}" "${NEOLOAD_TOKEN}"
-          else
-            echo "  → Logging in to NeoLoad Web (account default workspace)..."
+            if neoload login --workspace "${NEOLOAD_WORKSPACE}" "${NEOLOAD_TOKEN}"; then
+              LOGIN_OK=1
+            else
+              echo "WARN: workspace login failed for NEOLOAD_WORKSPACE='${NEOLOAD_WORKSPACE}'."
+              echo "      Retrying with account default workspace..."
+            fi
+          fi
+          if [ "${LOGIN_OK}" -eq 0 ]; then
             neoload login "${NEOLOAD_TOKEN}"
           fi
 
