@@ -71,11 +71,14 @@ jobs:
 
           IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
           RAN=0
+          VALIDATE_LOG=$(mktemp)
+          trap 'rm -f "${VALIDATE_LOG}"' EXIT
           for f in "${FILES[@]}"; do
+            EXIT_CODE=0
             echo "  → Checking NeoLoad as-code compatibility for ${f}..."
-            if ! neoload validate "${f}" > /tmp/neoload-validate.log 2>&1; then
-              echo "SKIP: ${f} is not NeoLoad as-code compatible for upload; keeping YAML-only validation."
-              head -n 20 /tmp/neoload-validate.log || true
+            if ! neoload validate "${f}" > "${VALIDATE_LOG}" 2>&1; then
+              echo "SKIP: ${f} is not NeoLoad as-code compatible and will not be executed."
+              head -n 20 "${VALIDATE_LOG}" || true
               continue
             fi
             TEST_NAME=$(basename "${f}" .yml)
