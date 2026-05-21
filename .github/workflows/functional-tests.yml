@@ -72,26 +72,27 @@ jobs:
           IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
           ANY_TESTS_RAN=0
           SKIPPED=0
-          VALIDATE_LOG=$(mktemp)
-          trap 'rm -f "${VALIDATE_LOG}"' EXIT
+          UPLOAD_LOG=$(mktemp)
+          trap 'rm -f "${UPLOAD_LOG}"' EXIT
           for f in "${FILES[@]}"; do
-            echo "  → Checking NeoLoad as-code compatibility for ${f}..."
-            if ! neoload validate "${f}" > "${VALIDATE_LOG}" 2>&1; then
-              echo "SKIP: ${f} is not NeoLoad as-code compatible and will not be executed."
-              echo "See validation output below:"
-              head -n 60 "${VALIDATE_LOG}" || true
-              SKIPPED=$((SKIPPED + 1))
-              continue
-            fi
             TEST_NAME=$(basename "${f}" .yml)
             echo "  → Configuring test settings and uploading ${f}..."
-            neoload \
+            if ! neoload \
               test-settings \
                 --zone defaultzone \
                 --scenario "Functional Smoke Suite" \
                 createorpatch "${TEST_NAME}" \
               project \
-                --path "${f}" upload "${TEST_NAME}"
+                --path "${f}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
+              if grep -q "PARSING_INVALID_AS_CODE_FILE" "${UPLOAD_LOG}"; then
+                echo "SKIP: ${f} is not NeoLoad as-code compatible for CLI upload."
+                SKIPPED=$((SKIPPED + 1))
+                continue
+              fi
+              echo "FAIL: upload failed for ${f}"
+              cat "${UPLOAD_LOG}"
+              exit 1
+            fi
             echo "  → Running ${TEST_NAME}..."
             ANY_TESTS_RAN=1
             EXIT_CODE=0
