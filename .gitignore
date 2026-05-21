@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+target/
+.tauri/
+src-tauri/target/
+coverage/
+playwright-report/
+test-results/

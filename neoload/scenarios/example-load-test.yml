@@ -1,0 +1,27 @@
+scenarios:
+  - name: "Todo App Load Test"
+    description: "Example load test scenario for the Todo App"
+    populations:
+      - name: "Users"
+        rampup:
+          duration: 60s
+          start_users: 1
+          end_users: 50
+        constant:
+          users: 50
+          duration: 300s
+    user_paths:
+      - name: "Browse Todos"
+        steps:
+          - navigate:
+              url: "http://localhost:1420"
+          - think_time: 2s
+          - action: "Add a new todo"
+          - think_time: 1s
+          - action: "Toggle todo completion"
+          - think_time: 1s
+          - action: "Delete a todo"
+    assertions:
+      - avg_response_time: "< 2s"
+      - error_rate: "< 1%"
+      - percentile_95_response_time: "< 4s"

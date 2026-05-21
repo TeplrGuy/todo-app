@@ -1,0 +1,21 @@
+steps:
+  - name: Install Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+      cache: 'npm'
+
+  - name: Install dependencies
+    run: npm ci
+
+  - name: Install Rust
+    uses: dtolnay/rust-toolchain@stable
+
+  - name: Cache Rust
+    uses: Swatinem/rust-cache@v2
+    with:
+      workspaces: src-tauri
+
+  - name: Install caveman for token efficiency
+    run: npx -y github:JuliusBrussee/caveman -- --only copilot --with-init
+    continue-on-error: true

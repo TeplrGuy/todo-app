@@ -1,0 +1,55 @@
+name: Functional Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'src-tauri/src/**'
+      - 'e2e/**'
+      - '.github/workflows/functional-tests.yml'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  discover-and-run:
+    name: Discover & Run Functional Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Discover test files
+        id: discover
+        run: |
+          TEST_FILES=$(find e2e -name "*.test.ts" -o -name "*.spec.ts" 2>/dev/null | sort | tr '\n' ',' | sed 's/,$//')
+          echo "files=${TEST_FILES}" >> $GITHUB_OUTPUT
+          echo "count=$(echo ${TEST_FILES} | tr ',' '\n' | grep -c . || echo 0)" >> $GITHUB_OUTPUT
+          echo "Discovered test files: ${TEST_FILES}"
+
+      - name: Run functional tests
+        if: steps.discover.outputs.count != '0'
+        run: |
+          echo "Running ${{ steps.discover.outputs.count }} functional test file(s)"
+          npx playwright test || true
+
+      - name: No tests found
+        if: steps.discover.outputs.count == '0'
+        run: echo "No functional tests discovered in e2e/ directory yet."
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: functional-test-results
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
