@@ -97,7 +97,7 @@ jobs:
             echo "  → Configuring test settings and uploading ${f} (as zip)..."
             if ! neoload \
               test-settings \
-                --zone defaultzone \
+                --zone USEAWS \
                 --scenario "Functional Smoke Suite" \
                 createorpatch "${TEST_NAME}" \
               project \
