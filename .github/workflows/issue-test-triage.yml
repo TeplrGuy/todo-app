@@ -91,6 +91,8 @@ jobs:
 
             const similarFunctional = functionalFiles.filter((p) => hasTokenOverlap(p.split('/').pop() || ''));
             const similarLoad = loadFiles.filter((p) => hasTokenOverlap(p.split('/').pop() || ''));
+            const hasFunctionalCoverageSignal = functionalExists || similarFunctional.length > 0;
+            const hasLoadCoverageSignal = loadExists || similarLoad.length > 0;
 
             const nl = '\n';
             let comment = '<!-- neoload-triage:v2 -->' + nl + nl;
@@ -190,7 +192,7 @@ jobs:
             }
 
             comment += nl + '### Next Steps' + nl + nl;
-            if ((isFunctionalTest && functionalExists) || (isLoadTest && loadExists)) {
+            if ((isFunctionalTest && hasFunctionalCoverageSignal) || (isLoadTest && hasLoadCoverageSignal)) {
               comment += '1. Reuse the existing NeoLoad file(s) above where possible.' + nl;
               comment += '2. If a new variant is required, create a new issue with explicit differentiation (endpoint, path, data volume, or SLA).' + nl;
             } else {
@@ -230,7 +232,7 @@ jobs:
             }
 
             const labelsToAdd = ['tests-proposed'];
-            if ((isFunctionalTest && functionalExists) || (isLoadTest && loadExists)) {
+            if ((isFunctionalTest && hasFunctionalCoverageSignal) || (isLoadTest && hasLoadCoverageSignal)) {
               labelsToAdd.push('tests-existing');
             }
 
