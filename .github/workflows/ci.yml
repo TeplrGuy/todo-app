@@ -10,6 +10,8 @@ jobs:
   test-frontend:
     name: Frontend Unit Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,6 +30,8 @@ jobs:
   test-rust:
     name: Rust Unit Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -42,6 +46,8 @@ jobs:
     name: Build Check
     needs: [test-frontend, test-rust]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

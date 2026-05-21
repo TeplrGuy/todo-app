@@ -6,7 +6,7 @@ on:
     paths:
       - 'src/**'
       - 'src-tauri/src/**'
-      - 'e2e/**'
+      - 'neoload/functional/**'
       - '.github/workflows/functional-tests.yml'
   pull_request:
     branches: [main, master]
@@ -14,42 +14,95 @@ on:
 
 jobs:
   discover-and-run:
-    name: Discover & Run Functional Tests
+    name: Discover & Run NeoLoad Functional Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Set up Python for NeoLoad CLI
+        uses: actions/setup-python@v5
         with:
-          node-version: '20'
-          cache: 'npm'
+          python-version: '3.11'
 
-      - run: npm ci
+      - name: Install NeoLoad CLI
+        run: pip install neoload
 
-      - name: Discover test files
+      - name: Discover NeoLoad functional test files
         id: discover
         run: |
-          TEST_FILES=$(find e2e -name "*.test.ts" -o -name "*.spec.ts" 2>/dev/null | sort | tr '\n' ',' | sed 's/,$//')
+          TEST_FILES=$(find neoload/functional -name "*.yml" -o -name "*.yaml" 2>/dev/null | sort | tr '\n' ',' | sed 's/,$//')
+          COUNT=$(echo "${TEST_FILES}" | tr ',' '\n' | grep -c . || echo 0)
           echo "files=${TEST_FILES}" >> $GITHUB_OUTPUT
-          echo "count=$(echo ${TEST_FILES} | tr ',' '\n' | grep -c . || echo 0)" >> $GITHUB_OUTPUT
-          echo "Discovered test files: ${TEST_FILES}"
+          echo "count=${COUNT}" >> $GITHUB_OUTPUT
+          echo "Discovered NeoLoad functional test files: ${TEST_FILES}"
+          echo "Total: ${COUNT} file(s)"
 
-      - name: Run functional tests
+      - name: Validate NeoLoad YAML structure
         if: steps.discover.outputs.count != '0'
         run: |
-          echo "Running ${{ steps.discover.outputs.count }} functional test file(s)"
-          npx playwright test || true
+          echo "Validating ${{ steps.discover.outputs.count }} NeoLoad file(s)..."
+          IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
+          for f in "${FILES[@]}"; do
+            echo "  → Validating ${f}"
+            python -c "
+          import yaml, sys
+          with open('${f}') as fh:
+              doc = yaml.safe_load(fh)
+          required = ['name', 'user_paths', 'scenarios']
+          missing = [k for k in required if k not in doc]
+          if missing:
+              print(f'FAIL ${f}: missing keys {missing}', file=sys.stderr)
+              sys.exit(1)
+          print(f'OK   ${f}')
+          "
+          done
+
+      - name: Run NeoLoad functional tests
+        if: |
+          steps.discover.outputs.count != '0' &&
+          env.NEOLOAD_TOKEN != ''
+        env:
+          NEOLOAD_TOKEN: ${{ secrets.NEOLOAD_TOKEN }}
+          NEOLOAD_WORKSPACE: ${{ secrets.NEOLOAD_WORKSPACE }}
+        run: |
+          echo "Running ${{ steps.discover.outputs.count }} NeoLoad functional test file(s)..."
+          IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
+          for f in "${FILES[@]}"; do
+            echo "  → Running ${f}"
+            neoload \
+              --token "${NEOLOAD_TOKEN}" \
+              --workspace "${NEOLOAD_WORKSPACE}" \
+              run "${f}" || EXIT_CODE=$?
+            if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+              echo "FAIL: ${f} exited with code ${EXIT_CODE}"
+              exit "${EXIT_CODE}"
+            fi
+          done
+
+      - name: Skip run — NeoLoad credentials not configured
+        if: |
+          steps.discover.outputs.count != '0' &&
+          env.NEOLOAD_TOKEN == ''
+        env:
+          NEOLOAD_TOKEN: ${{ secrets.NEOLOAD_TOKEN }}
+        run: |
+          echo "ℹ️  NEOLOAD_TOKEN secret not set — skipping live run."
+          echo "    YAML validation passed. Add NEOLOAD_TOKEN + NEOLOAD_WORKSPACE"
+          echo "    secrets to enable live test execution."
 
       - name: No tests found
         if: steps.discover.outputs.count == '0'
-        run: echo "No functional tests discovered in e2e/ directory yet."
+        run: echo "No NeoLoad functional tests discovered in neoload/functional/ yet."
 
-      - name: Upload test results
+      - name: Upload NeoLoad results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: functional-test-results
+          name: neoload-functional-results
           path: |
-            playwright-report/
-            test-results/
+            neoload-results/
+            *.xml
           if-no-files-found: ignore
+

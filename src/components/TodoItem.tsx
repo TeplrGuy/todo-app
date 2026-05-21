@@ -49,7 +49,7 @@ export function TodoItem({ todo, onToggle, onDelete, onEdit }: TodoItemProps) {
       )}
       <div className="todo-actions">
         {editing ? (
-          <button className="btn-save" onClick={handleSave}>
+          <button className="btn-save" aria-label="Save" onClick={handleSave}>
             Save
           </button>
         ) : (

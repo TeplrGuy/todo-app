@@ -45,19 +45,45 @@ jobs:
             comment += `\n### Proposed Test Cases\n\n`;
 
             if (isFunctionalTest || (!isLoadTest && !isFunctionalTest)) {
-              comment += `#### Functional Tests\n`;
-              comment += `Based on the issue description, here are proposed functional test cases:\n\n`;
-              comment += `\`\`\`typescript\n`;
-              comment += `// e2e/auto-generated.spec.ts\n`;
-              comment += `import { test, expect } from '@playwright/test';\n\n`;
-              comment += `test.describe('${title}', () => {\n`;
-              comment += `  test('should perform the described action', async ({ page }) => {\n`;
-              comment += `    await page.goto('http://localhost:1420');\n`;
-              comment += `    // TODO: Implement test based on: ${title}\n`;
-              comment += `    // Issue details: ${body.substring(0, 200)}\n`;
-              comment += `    expect(true).toBe(true); // Replace with actual assertion\n`;
-              comment += `  });\n`;
-              comment += `});\n`;
+              comment += `#### NeoLoad Functional Test Configuration\n`;
+              comment += `Proposed NeoLoad functional test scenario for this issue:\n\n`;
+              comment += `\`\`\`yaml\n`;
+              comment += `# neoload/functional/${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.yml\n`;
+              comment += `name: "${title}"\n\n`;
+              comment += `variables:\n`;
+              comment += `  - name: BASE_URL\n`;
+              comment += `    value: "http://localhost:1420"\n\n`;
+              comment += `user_paths:\n`;
+              comment += `  - name: "Verify ${title}"\n`;
+              comment += `    actions:\n`;
+              comment += `      running:\n`;
+              comment += `        steps:\n`;
+              comment += `          - navigate:\n`;
+              comment += `              url: "\${BASE_URL}"\n`;
+              comment += `              sla:\n`;
+              comment += `                response_time: "< 3s"\n`;
+              comment += `          # TODO: Add steps based on: ${title}\n`;
+              comment += `          # Issue details: ${body.substring(0, 200)}\n`;
+              comment += `          - assert:\n`;
+              comment += `              selector: "body"\n`;
+              comment += `              text: "Todo App"\n`;
+              comment += `              description: "App is reachable"\n\n`;
+              comment += `populations:\n`;
+              comment += `  - name: "FunctionalUser"\n`;
+              comment += `    user_paths:\n`;
+              comment += `      - name: "Verify ${title}"\n`;
+              comment += `        distribution: 100%\n\n`;
+              comment += `scenarios:\n`;
+              comment += `  - name: "${title}"\n`;
+              comment += `    description: "Auto-generated from GitHub issue #${{ github.event.issue.number }}"\n`;
+              comment += `    populations:\n`;
+              comment += `      - name: "FunctionalUser"\n`;
+              comment += `        duration:\n`;
+              comment += `          type: iteration\n`;
+              comment += `          count: 1\n`;
+              comment += `    assertions:\n`;
+              comment += `      - error_rate: "< 1%"\n`;
+              comment += `      - avg_response_time: "< 3s"\n`;
               comment += `\`\`\`\n\n`;
             }
 
@@ -89,8 +115,10 @@ jobs:
 
             comment += `### Next Steps\n`;
             comment += `1. Review the proposed test cases above\n`;
-            comment += `2. Create a PR with the implemented tests in \`e2e/\` (functional) or \`neoload/\` (load tests)\n`;
-            comment += `3. The CI pipeline will automatically discover and run tests in \`e2e/\`\n`;
+            comment += `2. Create a PR with the implemented tests:\n`;
+            comment += `   - Functional tests → \`neoload/functional/\`\n`;
+            comment += `   - Load tests → \`neoload/scenarios/\`\n`;
+            comment += `3. The CI pipeline auto-discovers any \`*.yml\` added to \`neoload/functional/\`\n`;
             comment += `4. Label this issue with \`tests-proposed\` when done reviewing\n\n`;
             comment += `---\n`;
             comment += `*Auto-triaged by GitHub Actions · [View workflow](../actions/workflows/issue-test-triage.yml)*\n`;

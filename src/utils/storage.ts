@@ -30,7 +30,7 @@ export const SEED_TODOS: Todo[] = [
   },
   {
     id: 'seed-005',
-    title: 'Add Playwright functional tests in e2e/',
+    title: 'Add NeoLoad functional tests in neoload/functional/',
     completed: false,
     createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
   },

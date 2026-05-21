@@ -13,7 +13,8 @@ This guide walks through demonstrating GitHub Copilot's automated testing capabi
 **Key points:**
 - This is a Tauri v2 desktop app (Rust + React)
 - We'll show how Copilot accelerates the full testing lifecycle
-- Three test layers: Unit → Functional → Load
+- Three test layers: Unit → Functional (NeoLoad) → Load (NeoLoad)
+- All functional AND load testing powered by [NeoLoad by Tricentis](https://www.tricentis.com/lp/neoload-performance-load-testing-ppc)
 
 ---
 
@@ -28,7 +29,7 @@ npm run tauri dev
 ```
 
 Walk through:
-- Adding a todo
+- Adding a todo (seed data already pre-populated)
 - Toggling completion
 - Editing a title
 - Deleting a todo
@@ -70,62 +71,71 @@ Walk through:
 
 ---
 
-## Slide 5: Functional Test Auto-Discovery
+## Slide 5: NeoLoad Functional Tests — Auto-Discovery
 
-**Title:** _"CI auto-discovers Playwright tests"_
+**Title:** _"NeoLoad validates every feature — CI auto-discovers the tests"_
 
 **Demo steps:**
-1. Show `e2e/todo.spec.ts`
-2. Show `.github/workflows/functional-tests.yml`
-3. Highlight the `find e2e -name "*.spec.ts"` discovery step
-4. Ask Copilot: _"Add a Playwright test for adding multiple todos and verifying the count"_
-5. The new spec file is automatically picked up by CI
+1. Open `neoload/functional/todo-functional.yml`
+2. Walk through a user path — e.g. "Add Todo":
+   - `navigate` → `fill` → `click` → `assert` (item appears in list)
+3. Show `.github/workflows/functional-tests.yml`
+4. Highlight the `find neoload/functional -name "*.yml"` discovery step
+5. Ask Copilot: _"Generate a NeoLoad functional test for editing a todo and verifying the updated title"_
+6. Drop the new YAML into `neoload/functional/` — CI picks it up automatically
 
 **Talking points:**
-- No manual CI config needed when adding new e2e tests
-- Copilot can generate full Playwright tests from natural language
-- Follows AAA pattern (Arrange, Act, Assert)
+- No CI config changes needed when adding new functional tests
+- NeoLoad handles both functional (1 user) AND load (50–200 users) — single tool
+- YAML is version-controlled alongside code; Copilot can generate it from natural language
+- Follows Navigate→Act→Assert pattern
 
 ---
 
 ## Slide 6: Issue-Triggered Test Triage
 
-**Title:** _"GitHub Issues → Automated test proposals"_
+**Title:** _"GitHub Issues → Automated NeoLoad test proposals"_
 
 **Demo steps:**
 1. Go to the repo Issues tab
-2. Create a new issue titled: `[LOAD TEST] Todo API performance under 100 concurrent users`
+2. Create a new issue titled: `[LOAD TEST] Todo App performance under 100 concurrent users`
 3. Watch the `issue-test-triage.yml` workflow trigger
 4. Show the bot comment with:
    - Detected test type: Load Test
-   - Generated NeoLoad YAML scenario
-   - Generated Playwright spec template
-   - Next steps checklist
+   - Generated NeoLoad YAML scenario (rampup, constant, assertions)
+   - Next steps checklist pointing to `neoload/scenarios/`
+
+5. Now create: `[FUNCTIONAL TEST] Verify seed data loads on first visit`
+6. Bot responds with a NeoLoad functional YAML scaffold (1 user, iteration-based)
 
 **Talking points:**
 - Issue title keywords trigger different test types
-- `[LOAD TEST]` → NeoLoad scenario scaffolding
-- `[FUNCTIONAL TEST]` → Playwright spec scaffolding
-- `test-request` label → General test proposal
+- `[LOAD TEST]` → NeoLoad load scenario scaffolding
+- `[FUNCTIONAL TEST]` → NeoLoad functional scenario scaffolding
+- `test-request` label → General NeoLoad test proposal
 - Bot adds `tests-proposed` label automatically
 
 ---
 
-## Slide 7: NeoLoad Integration
+## Slide 7: NeoLoad Load Test Scenarios
 
-**Title:** _"Load testing with NeoLoad"_
+**Title:** _"Three load test scenarios, version-controlled"_
 
 **Show:** `neoload/scenarios/example-load-test.yml`
 
-Key elements:
-- Ramp-up: 1 → 50 users over 60 seconds
-- Sustained load: 50 users for 5 minutes
-- Assertions: avg response < 2s, error rate < 1%
+Three pre-built scenarios:
+
+| Scenario | Users | Duration | Purpose |
+|----------|-------|----------|---------|
+| Load Test | 1 → 50 | 6 min | Baseline performance |
+| Stress Test | 1 → 200 | 5 min | Find breaking point |
+| Soak Test | 30 | 30 min | Detect memory leaks |
 
 **Talking points:**
-- NeoLoad scenarios are version-controlled alongside code
+- Scenarios are code — reviewed in PRs, tracked in git
 - Auto-generated from issues, refined by engineers
-- Integrates with Tricentis NeoLoad platform
+- Integrates with [Tricentis NeoLoad platform](https://www.tricentis.com/lp/neoload-performance-load-testing-ppc)
+- Run locally: `neoload run neoload/scenarios/example-load-test.yml`
 
 ---
 
@@ -137,18 +147,23 @@ Key elements:
 
 ```markdown
 ## Testing Guidelines
-When generating unit tests:
-- Use Vitest + @testing-library/react for frontend
-- Test each function/component in isolation
-- Mock localStorage and Tauri API calls
+When generating functional tests:
+- Place in neoload/functional/ as *.yml files
+- Use NeoLoad YAML: name, variables, user_paths, populations, scenarios
+- Single virtual user (duration.type: iteration, count: 1)
+
+When generating load tests:
+- Place in neoload/scenarios/ as *.yml files
+- Define rampup, constant population blocks
+- Assert avg_response_time, error_rate, percentile_95
 ```
 
 **Show:** `.github/copilot-setup-steps.yml`
 - Pre-installs Node, Rust, and Copilot optimizations in cloud agent
 
 **Talking points:**
-- `copilot-instructions.md` gives Copilot project context
-- No more repeating "use Vitest" every time
+- `copilot-instructions.md` gives Copilot the NeoLoad YAML schema context
+- No more repeating "use NeoLoad format" every session
 - `copilot-setup-steps.yml` prepares the cloud agent environment
 
 ---
@@ -160,15 +175,18 @@ When generating unit tests:
 ```
 Push/PR
   │
-  ├── Frontend Unit Tests (Vitest)
+  ├── Frontend Unit Tests (Vitest)         ← npm test
   ├── Rust Unit Tests (cargo test)
   └── Build Check (tsc + vite build)
 
-Merge to main
-  └── Functional Tests (Playwright auto-discovery)
+Push to src/ or neoload/functional/
+  └── Functional Tests (NeoLoad auto-discovery)
+        ├── Discovers neoload/functional/*.yml
+        ├── Validates YAML structure
+        └── Runs via NeoLoad CLI (if NEOLOAD_TOKEN set)
 
-Issues
-  └── Test Triage Bot (NeoLoad + Playwright proposals)
+Issues [LOAD TEST] / [FUNCTIONAL TEST]
+  └── Test Triage Bot → NeoLoad YAML proposal as issue comment
 ```
 
 ---
@@ -176,16 +194,18 @@ Issues
 ## Slide 10: Key Takeaways
 
 1. **Copilot accelerates** unit test writing — not just code
-2. **Auto-discovery** means less CI maintenance overhead
-3. **Issue triage bot** closes the loop between requirements and tests
-4. **Copilot instructions** make AI assistance consistent across the team
-5. **NeoLoad integration** brings performance testing into the dev workflow
+2. **NeoLoad covers both** functional validation and performance testing — one tool
+3. **Auto-discovery** means zero CI maintenance when adding new NeoLoad tests
+4. **Issue triage bot** closes the loop between requirements and NeoLoad scenarios
+5. **Copilot instructions** make AI assistance consistent across the team
 
 ---
 
 ## Q&A Prompts
 
-- "Can Copilot generate tests for existing untested code?"
-- "How do I add a new Playwright test?"
-- "How does the NeoLoad scenario get executed?"
+- "Can Copilot generate NeoLoad tests for existing untested features?"
+- "How is a NeoLoad functional test different from a load test?"
+- "How do I add a new functional test to the auto-discovered suite?"
+- "How does the NeoLoad scenario connect to the Tricentis platform?"
 - "Can I customize what the triage bot proposes?"
+

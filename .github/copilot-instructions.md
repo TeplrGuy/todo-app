@@ -5,7 +5,7 @@ This is a Tauri v2 todo application used to showcase GitHub Copilot's automated 
 ## Project Context
 - Framework: Tauri v2 (Rust backend + React/TypeScript frontend)
 - Storage: Browser localStorage
-- Testing: Vitest (unit), Playwright (functional/e2e), NeoLoad (load testing)
+- Testing: Vitest (unit), NeoLoad (functional + load testing)
 - Token efficiency: Use caveman-style concise responses
 
 ## Code Style
@@ -22,11 +22,16 @@ When generating unit tests:
 - Aim for >80% coverage
 
 When generating functional tests:
-- Place in e2e/ directory as *.spec.ts files
-- Use Playwright for browser automation
-- Follow AAA pattern (Arrange, Act, Assert)
+- Place in `neoload/functional/` as `*.yml` files
+- Use NeoLoad YAML format: `name`, `variables`, `user_paths`, `populations`, `scenarios`
+- Single virtual user (`duration.type: iteration, count: 1`)
+- Include `assert` and `assert_not` steps to verify UI state
+- Follow Arrange→Navigate→Act→Assert pattern
 
 When generating load tests:
-- Place in neoload/ directory as *.yml files
-- Follow NeoLoad scenario structure
-- Define clear performance assertions
+- Place in `neoload/scenarios/` as `*.yml` files
+- Use NeoLoad YAML format with `rampup` and `constant` population blocks
+- Define performance assertions: `avg_response_time`, `error_rate`, `percentile_95_response_time`
+- Provide multiple scenarios: standard load, stress, soak
+
+NeoLoad resources: https://www.tricentis.com/lp/neoload-performance-load-testing-ppc

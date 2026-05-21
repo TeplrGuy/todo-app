@@ -39,6 +39,7 @@ function App() {
           <button
             key={f}
             className={`filter-btn${filter === f ? ' active' : ''}`}
+            aria-label={f.charAt(0).toUpperCase() + f.slice(1)}
             onClick={() => setFilter(f)}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -56,6 +57,7 @@ function App() {
       <footer className="app-footer">
         <button
           className="clear-btn"
+          aria-label={`Clear Completed (${completedCount})`}
           onClick={clearCompleted}
           disabled={completedCount === 0}
         >
