@@ -20,6 +20,8 @@ user_paths:
       steps:
         - request:
             url: /
+            server: todo_app
+            method: GET
         - think_time: 1s
 
 populations:
