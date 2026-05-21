@@ -118,12 +118,12 @@ jobs:
                 'name: "' + issueTitle + '"',
                 'servers:',
                 '  - name: todo_app',
-                '    host: localhost',
-                '    port: 1420',
-                '    scheme: http',
+                '    host: green-wave-0693f8c0f.7.azurestaticapps.net',
+                '    port: 443',
+                '    scheme: https',
                 'variables:',
                 '  - name: BASE_URL',
-                '    value: "http://localhost:1420"',
+                '    value: "https://green-wave-0693f8c0f.7.azurestaticapps.net"',
                 'user_paths:',
                 '  - name: "Functional Smoke"',
                 '    actions:',
@@ -159,12 +159,12 @@ jobs:
                 'name: "' + issueTitle + '"',
                 'servers:',
                 '  - name: todo_app',
-                '    host: localhost',
-                '    port: 1420',
-                '    scheme: http',
+                '    host: green-wave-0693f8c0f.7.azurestaticapps.net',
+                '    port: 443',
+                '    scheme: https',
                 'variables:',
                 '  - name: BASE_URL',
-                '    value: "http://localhost:1420"',
+                '    value: "https://green-wave-0693f8c0f.7.azurestaticapps.net"',
                 'user_paths:',
                 '  - name: "Load Path"',
                 '    actions:',
@@ -358,12 +358,12 @@ jobs:
               comment += `name: "${title.replace(/"/g, '\\"')}"` + nl;
               comment += 'servers:' + nl;
               comment += '  - name: todo_app' + nl;
-              comment += '    host: localhost' + nl;
-              comment += '    port: 1420' + nl;
-              comment += '    scheme: http' + nl;
+              comment += '    host: green-wave-0693f8c0f.7.azurestaticapps.net' + nl;
+              comment += '    port: 443' + nl;
+              comment += '    scheme: https' + nl;
               comment += 'variables:' + nl;
               comment += '  - name: BASE_URL' + nl;
-              comment += '    value: "http://localhost:1420"' + nl;
+              comment += '    value: "https://green-wave-0693f8c0f.7.azurestaticapps.net"' + nl;
               comment += 'user_paths:' + nl;
               comment += '  - name: "Functional Smoke"' + nl;
               comment += '    actions:' + nl;
@@ -397,12 +397,12 @@ jobs:
               comment += `name: "${title.replace(/"/g, '\\"')}"` + nl;
               comment += 'servers:' + nl;
               comment += '  - name: todo_app' + nl;
-              comment += '    host: localhost' + nl;
-              comment += '    port: 1420' + nl;
-              comment += '    scheme: http' + nl;
+              comment += '    host: green-wave-0693f8c0f.7.azurestaticapps.net' + nl;
+              comment += '    port: 443' + nl;
+              comment += '    scheme: https' + nl;
               comment += 'variables:' + nl;
               comment += '  - name: BASE_URL' + nl;
-              comment += '    value: "http://localhost:1420"' + nl;
+              comment += '    value: "https://green-wave-0693f8c0f.7.azurestaticapps.net"' + nl;
               comment += 'user_paths:' + nl;
               comment += '  - name: "Load Path"' + nl;
               comment += '    actions:' + nl;

@@ -57,12 +57,12 @@ Use these as starting points because they validate with `neoload validate` out o
 name: "Functional Smoke"
 servers:
   - name: todo_app
-    host: localhost
-    port: 1420
-    scheme: http
+    host: green-wave-0693f8c0f.7.azurestaticapps.net
+    port: 443
+    scheme: https
 variables:
   - name: BASE_URL
-    value: "http://localhost:1420"
+    value: "https://green-wave-0693f8c0f.7.azurestaticapps.net"
 user_paths:
   - name: "Functional Smoke"
     actions:
@@ -93,12 +93,12 @@ scenarios:
 name: "Standard Load"
 servers:
   - name: todo_app
-    host: localhost
-    port: 1420
-    scheme: http
+    host: green-wave-0693f8c0f.7.azurestaticapps.net
+    port: 443
+    scheme: https
 variables:
   - name: BASE_URL
-    value: "http://localhost:1420"
+    value: "https://green-wave-0693f8c0f.7.azurestaticapps.net"
 user_paths:
   - name: "Load Path"
     actions:

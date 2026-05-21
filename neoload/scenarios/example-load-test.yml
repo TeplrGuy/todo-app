@@ -6,13 +6,13 @@ name: "Todo App Load Test"
 
 servers:
   - name: todo_app
-    host: localhost
-    port: 1420
-    scheme: http
+    host: green-wave-0693f8c0f.7.azurestaticapps.net
+    port: 443
+    scheme: https
 
 variables:
   - name: BASE_URL
-    value: "http://localhost:1420"
+    value: "https://green-wave-0693f8c0f.7.azurestaticapps.net"
 
 user_paths:
   - name: "Load Path"
