@@ -72,10 +72,18 @@ jobs:
           IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
           ANY_TESTS_RAN=0
           SKIPPED=0
+          VALIDATE_LOG=$(mktemp)
           UPLOAD_LOG=$(mktemp)
-          trap 'rm -f "${UPLOAD_LOG}"' EXIT
+          trap 'rm -f "${VALIDATE_LOG}" "${UPLOAD_LOG}"' EXIT
           for f in "${FILES[@]}"; do
             TEST_NAME=$(basename "${f}" .yml)
+            echo "  → Validating NeoLoad as-code compatibility for ${f}..."
+            if ! neoload validate "${f}" > "${VALIDATE_LOG}" 2>&1; then
+              echo "SKIP: ${f} is not NeoLoad as-code compatible."
+              cat "${VALIDATE_LOG}"
+              SKIPPED=$((SKIPPED + 1))
+              continue
+            fi
             echo "  → Configuring test settings and uploading ${f}..."
             if ! neoload \
               test-settings \
@@ -84,11 +92,6 @@ jobs:
                 createorpatch "${TEST_NAME}" \
               project \
                 --path "${f}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
-              if grep -Eq "PARSING_INVALID_AS_CODE_FILE|YAML does not con[a-z]* to NeoLoad DSL schema" "${UPLOAD_LOG}"; then
-                echo "SKIP: ${f} is not NeoLoad as-code compatible for CLI upload."
-                SKIPPED=$((SKIPPED + 1))
-                continue
-              fi
               echo "FAIL: upload failed for ${f}"
               cat "${UPLOAD_LOG}"
               exit 1
@@ -103,7 +106,9 @@ jobs:
             fi
           done
           if [ "${ANY_TESTS_RAN}" -eq 0 ]; then
-            echo "No live runs executed: ${SKIPPED} of ${#FILES[@]} discovered file(s) were skipped as non-NeoLoad as-code."
+            echo "FAIL: no live NeoLoad functional tests executed."
+            echo "${SKIPPED} of ${#FILES[@]} discovered file(s) were skipped as non-NeoLoad as-code."
+            exit 1
           fi
 
       - name: Skip run — NeoLoad credentials not configured
