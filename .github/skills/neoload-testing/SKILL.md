@@ -26,30 +26,32 @@ The `issue-test-triage.yml` workflow auto-triages those issues and:
 
 ## Repository Guardrails
 
-- Functional tests go in `neoload/functional/` and must include top-level keys:
-  - `name`
-  - `variables`
-  - `user_paths`
-  - `populations`
-  - `scenarios`
-- Load tests go in `neoload/scenarios/` and must include:
-  - realistic ramp/constant population blocks
-  - scenario assertions such as `avg_response_time`, `error_rate`, and `percentile_95_response_time`
-- Functional scenarios are smoke-style and should use single-iteration populations.
-- In NeoLoad as-code YAML, use `actions.steps` directly under each user path.
-- Do not use `actions.running`, `actions.init`, or `actions.end` in this repository.
-- Start from a NeoLoad-compatible baseline (`think_time` step) and then expand.
+- Functional tests → `neoload/functional/`, load tests → `neoload/scenarios/`
+- Every file **must** pass `neoload validate` locally before PR (enforced by CI)
+- Target URL: `https://green-wave-0693f8c0f.7.azurestaticapps.net` (Azure SWA, publicly reachable by NeoLoad SaaS agents)
+
+### NeoLoad SaaS Schema — Critical Rules (validated against `as-code.latest.schema.json`)
+
+These rules apply to **both** local `neoload validate` AND NeoLoad SaaS server-side upload. Violating them causes `PARSING_INVALID_AS_CODE_FILE` on upload even if local validation passes.
+
+| Rule | ✅ Correct | ❌ Wrong |
+|---|---|---|
+| `servers` block required | `servers: [{name, host, port, scheme}]` | omitting `servers` |
+| `request` step is an object | `- request: {url: /, server: todo_app}` | `- request: /` |
+| Scenario population load | `constant_load: {users: N, duration: "Xm"}` or `rampup_load: {min_users, max_users, increment_users, increment_every, duration}` | `duration: {type: iteration}`, `rampup:`, `constant:` |
+| Duration format | `"5m"`, `"30s"`, `"1 iterations"` (string) | `{type: iteration, count: 1}` (object) |
+| `populations[].user_paths[]` | `- name: "Path Name"` only | adding `distribution: 100%` |
+| `scenarios[]` properties | `name`, `description`, `populations` only | `assertions:` — not in schema |
 
 ## CI Compatibility Rules
 
-* Functional workflow validates each discovered file using `neoload validate` before upload.
-* If all discovered files are invalid or skipped, the workflow fails by design.
-* Keep files both YAML-parseable and NeoLoad as-code compatible.
-* Preserve discovery behavior for all `neoload/functional/*.yml` files.
+- Functional workflow validates each file with `neoload validate` then uploads to NeoLoad SaaS
+- If all files are invalid or upload fails, workflow fails by design
+- Local `neoload validate` uses JSON Schema (Draft 7) which is lenient on extra properties; the SaaS server parser is strict — follow the table above exactly
 
 ## NeoLoad Baseline Templates
 
-Use these as starting points because they validate with `neoload validate` out of the box.
+Copy these verbatim — they pass both `neoload validate` and NeoLoad SaaS upload.
 
 ### Functional baseline
 
@@ -69,22 +71,19 @@ user_paths:
       steps:
         - request:
             url: /
+            server: todo_app
         - think_time: 1s
 populations:
   - name: "FunctionalUser"
     user_paths:
       - name: "Functional Smoke"
-        distribution: 100%
 scenarios:
   - name: "Functional Smoke"
     populations:
       - name: "FunctionalUser"
-        duration:
-          type: iteration
-          count: 1
-    assertions:
-      - error_rate: "< 1%"
-      - avg_response_time: "< 3s"
+        constant_load:
+          users: 1
+          duration: "1 iterations"
 ```
 
 ### Load baseline
@@ -105,26 +104,22 @@ user_paths:
       steps:
         - request:
             url: /
+            server: todo_app
         - think_time: 1s
 populations:
   - name: "Users"
     user_paths:
       - name: "Load Path"
-        distribution: 100%
 scenarios:
   - name: "Standard Load"
     populations:
       - name: "Users"
-        rampup:
-          duration: 60s
-          start_users: 1
-          end_users: 50
-        constant:
-          users: 50
-          duration: 300s
-    assertions:
-      - avg_response_time: "< 2s"
-      - error_rate: "< 1%"
+        rampup_load:
+          min_users: 1
+          max_users: 50
+          increment_users: 5
+          increment_every: 10s
+          duration: "5m"
 ```
 
 ## Duplicate Detection Rules
@@ -138,15 +133,11 @@ Before creating a new test YAML:
 
 ## Authoring Checklist
 
-1. Place file in the correct folder:
-   - Functional: `neoload/functional/<name>.yml`
-   - Load: `neoload/scenarios/<name>.yml`
-2. Keep YAML indentation and quoting consistent with existing files.
-3. Add/keep meaningful variable names and deterministic test data.
-4. Ensure each user path has `actions.steps` with at least one valid step.
-5. Ensure each scenario references declared populations.
-6. For load tests, include standard, stress, and soak scenarios when requested.
-7. Validate YAML locally before PR:
-   - `neoload validate neoload/functional/<file>.yml`
-   - `neoload validate neoload/scenarios/<file>.yml`
-8. Run repository checks after edits (`npm run build`, `npm test`, and targeted workflow checks).
+1. Copy the correct baseline template above verbatim — do not invent new schema keys.
+2. Place in the correct folder: `neoload/functional/` or `neoload/scenarios/`.
+3. Name the file with a slug matching the feature under test.
+4. Set `server: todo_app` inside each `request` step (references the `servers` block).
+5. Use `constant_load` or `rampup_load` inside scenario populations — never bare `duration:` or `assertions:`.
+6. Use duration as a string: `"5m"`, `"30s"`, or `"1 iterations"` — never an object.
+7. Validate locally before PR: `neoload validate neoload/functional/<file>.yml`
+8. If validation passes locally but CI upload fails with `PARSING_INVALID_AS_CODE_FILE`, re-check the schema rules table above — the SaaS server is stricter than the local validator.
