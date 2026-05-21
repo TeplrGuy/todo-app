@@ -84,7 +84,7 @@ jobs:
                 createorpatch "${TEST_NAME}" \
               project \
                 --path "${f}" upload "${TEST_NAME}" > "${UPLOAD_LOG}" 2>&1; then
-              if grep -q "PARSING_INVALID_AS_CODE_FILE" "${UPLOAD_LOG}"; then
+              if grep -Eq "PARSING_INVALID_AS_CODE_FILE|YAML does not confirm to NeoLoad DSL schema" "${UPLOAD_LOG}"; then
                 echo "SKIP: ${f} is not NeoLoad as-code compatible for CLI upload."
                 SKIPPED=$((SKIPPED + 1))
                 continue
