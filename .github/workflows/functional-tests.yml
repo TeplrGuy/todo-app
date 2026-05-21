@@ -12,6 +12,10 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+concurrency:
+  group: neoload-saas-single-vu
+  cancel-in-progress: false
+
 jobs:
   discover-and-run:
     name: Discover & Run NeoLoad Functional Tests
