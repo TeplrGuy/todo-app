@@ -1,7 +1,11 @@
 # NeoLoad Functional Test — Todo App
 # Runs as a single-user smoke suite to validate all core app behaviours.
-# Trigger locally : neoload run neoload/functional/todo-functional.yml
-# Trigger in CI   : handled by .github/workflows/functional-tests.yml
+# Validate locally : neoload validate neoload/functional/todo-functional.yml
+# Run locally      : neoload login --workspace $NEOLOAD_WORKSPACE $NEOLOAD_TOKEN
+#                    neoload test-settings --zone defaultzone --scenario "Functional Smoke Suite" createorpatch todo-functional \
+#                      project --path neoload/functional/todo-functional.yml upload todo-functional
+#                    neoload run todo-functional
+# Trigger in CI    : handled by .github/workflows/functional-tests.yml
 
 name: "Todo App Functional Tests"
 

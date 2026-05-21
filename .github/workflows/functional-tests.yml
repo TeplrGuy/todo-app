@@ -39,24 +39,14 @@ jobs:
           echo "Discovered NeoLoad functional test files: ${TEST_FILES}"
           echo "Total: ${COUNT} file(s)"
 
-      - name: Validate NeoLoad YAML structure
+      - name: Validate NeoLoad YAML syntax
         if: steps.discover.outputs.count != '0'
         run: |
           echo "Validating ${{ steps.discover.outputs.count }} NeoLoad file(s)..."
           IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
           for f in "${FILES[@]}"; do
             echo "  → Validating ${f}"
-            python -c "
-          import yaml, sys
-          with open('${f}') as fh:
-              doc = yaml.safe_load(fh)
-          required = ['name', 'user_paths', 'scenarios']
-          missing = [k for k in required if k not in doc]
-          if missing:
-              print(f'FAIL ${f}: missing keys {missing}', file=sys.stderr)
-              sys.exit(1)
-          print(f'OK   ${f}')
-          "
+            neoload validate "${f}"
           done
 
       - name: Run NeoLoad functional tests
@@ -70,11 +60,21 @@ jobs:
           echo "Running ${{ steps.discover.outputs.count }} NeoLoad functional test file(s)..."
           IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
           for f in "${FILES[@]}"; do
-            echo "  → Running ${f}"
+            TEST_NAME=$(basename "${f}" .yml)
+            echo "  → Logging in to NeoLoad Web..."
+            neoload login \
+              --workspace "${NEOLOAD_WORKSPACE:-Default Workspace}" \
+              "${NEOLOAD_TOKEN}"
+            echo "  → Configuring test settings and uploading ${f}..."
             neoload \
-              --token "${NEOLOAD_TOKEN}" \
-              --workspace "${NEOLOAD_WORKSPACE}" \
-              run "${f}" || EXIT_CODE=$?
+              test-settings \
+                --zone defaultzone \
+                --scenario "Functional Smoke Suite" \
+                createorpatch "${TEST_NAME}" \
+              project \
+                --path "${f}" upload "${TEST_NAME}"
+            echo "  → Running ${TEST_NAME}..."
+            neoload run "${TEST_NAME}" || EXIT_CODE=$?
             if [ "${EXIT_CODE:-0}" -ne 0 ]; then
               echo "FAIL: ${f} exited with code ${EXIT_CODE}"
               exit "${EXIT_CODE}"

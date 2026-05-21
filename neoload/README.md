@@ -37,24 +37,30 @@ Functional tests run as a **single virtual user**, one iteration. They validate 
 7. Clear Completed
 8. Stats Counter
 
-### Run locally
-
-```bash
-pip install neoload
-neoload --token $NEOLOAD_TOKEN --workspace $NEOLOAD_WORKSPACE \
-  run neoload/functional/todo-functional.yml
-```
-
 ### Validate YAML without credentials
 
 ```bash
-python -c "
-import yaml, sys
-doc = yaml.safe_load(open('neoload/functional/todo-functional.yml'))
-required = ['name', 'user_paths', 'scenarios']
-missing = [k for k in required if k not in doc]
-print('FAIL:', missing) if missing else print('OK')
-"
+pip install neoload
+neoload validate neoload/functional/todo-functional.yml
+```
+
+### Run locally
+
+```bash
+# 1. Authenticate
+neoload login --workspace "$NEOLOAD_WORKSPACE" "$NEOLOAD_TOKEN"
+
+# 2. Upload project and configure test settings
+neoload \
+  test-settings \
+    --zone defaultzone \
+    --scenario "Functional Smoke Suite" \
+    createorpatch todo-functional \
+  project \
+    --path neoload/functional/todo-functional.yml upload todo-functional
+
+# 3. Run
+neoload run todo-functional
 ```
 
 ## Load Tests (`neoload/scenarios/`)
@@ -70,8 +76,11 @@ Three pre-built scenarios targeting different load profiles:
 ### Run locally
 
 ```bash
-neoload --token $NEOLOAD_TOKEN --workspace $NEOLOAD_WORKSPACE \
-  run neoload/scenarios/example-load-test.yml
+neoload login --workspace "$NEOLOAD_WORKSPACE" "$NEOLOAD_TOKEN"
+neoload \
+  test-settings --zone defaultzone --scenario "Standard Load Test" createorpatch todo-load \
+  project --path neoload/scenarios/example-load-test.yml upload todo-load
+neoload run todo-load
 ```
 
 ## CI Integration
