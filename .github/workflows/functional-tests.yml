@@ -95,6 +95,8 @@ jobs:
             PROJ_ZIP_DIR=$(mktemp -d)
             cp "${f}" "${PROJ_ZIP_DIR}/neoload.yml"
             echo "  → Configuring test settings and uploading ${f} (as zip)..."
+            # Delete existing test settings to avoid zone-type mismatch when recreating.
+            neoload test-settings delete "${TEST_NAME}" > /dev/null 2>&1 || true
             if ! neoload \
               test-settings \
                 --zone USEAWS \
