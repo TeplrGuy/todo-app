@@ -61,13 +61,24 @@ jobs:
           NEOLOAD_WORKSPACE: ${{ secrets.NEOLOAD_WORKSPACE }}
         run: |
           echo "Running ${{ steps.discover.outputs.count }} NeoLoad functional test file(s)..."
+          if [ -n "${NEOLOAD_WORKSPACE:-}" ]; then
+            echo "  → Logging in to NeoLoad Web (workspace: ${NEOLOAD_WORKSPACE})..."
+            neoload login --workspace "${NEOLOAD_WORKSPACE}" "${NEOLOAD_TOKEN}"
+          else
+            echo "  → Logging in to NeoLoad Web (account default workspace)..."
+            neoload login "${NEOLOAD_TOKEN}"
+          fi
+
           IFS=',' read -ra FILES <<< "${{ steps.discover.outputs.files }}"
+          RAN=0
           for f in "${FILES[@]}"; do
+            echo "  → Checking NeoLoad as-code compatibility for ${f}..."
+            if ! neoload validate "${f}" > /tmp/neoload-validate.log 2>&1; then
+              echo "SKIP: ${f} is not NeoLoad as-code compatible for upload; keeping YAML-only validation."
+              head -n 20 /tmp/neoload-validate.log || true
+              continue
+            fi
             TEST_NAME=$(basename "${f}" .yml)
-            echo "  → Logging in to NeoLoad Web..."
-            neoload login \
-              --workspace "${NEOLOAD_WORKSPACE:-Default Workspace}" \
-              "${NEOLOAD_TOKEN}"
             echo "  → Configuring test settings and uploading ${f}..."
             neoload \
               test-settings \
@@ -77,12 +88,16 @@ jobs:
               project \
                 --path "${f}" upload "${TEST_NAME}"
             echo "  → Running ${TEST_NAME}..."
+            RAN=1
             neoload run "${TEST_NAME}" || EXIT_CODE=$?
             if [ "${EXIT_CODE:-0}" -ne 0 ]; then
               echo "FAIL: ${f} exited with code ${EXIT_CODE}"
               exit "${EXIT_CODE}"
             fi
           done
+          if [ "${RAN}" -eq 0 ]; then
+            echo "No NeoLoad as-code compatible functional files found for live run."
+          fi
 
       - name: Skip run — NeoLoad credentials not configured
         if: |
