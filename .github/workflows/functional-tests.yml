@@ -93,6 +93,7 @@ jobs:
             # Use 'zip -j' (junk paths) so .yml sits at zip root — NeoLoad controller
             # requires files at the archive root, not under a path prefix.
             PROJ_ZIP=$(mktemp --suffix=.zip)
+            rm -f "${PROJ_ZIP}"  # mktemp creates empty file; remove so zip builds fresh
             zip -j "${PROJ_ZIP}" "${f}"
             echo "  → Configuring test settings and uploading ${f} (zip)..."
             neoload test-settings delete "${TEST_NAME}" > /dev/null 2>&1 || true
