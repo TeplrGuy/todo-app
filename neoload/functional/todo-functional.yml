@@ -31,209 +31,201 @@ user_paths:
   # ------------------------------------------------------------------
   - name: "App Header Check"
     actions:
-      running:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-              sla:
-                response_time: "< 3s"
-          - assert:
-              selector: "h1"
-              text: "Todo App"
-              description: "App header is visible"
+      steps:
+        - navigate:
+            url: "${BASE_URL}"
+            sla:
+              response_time: "< 3s"
+        - assert:
+            selector: "h1"
+            text: "Todo App"
+            description: "App header is visible"
 
   # ------------------------------------------------------------------
   # 2. Add a new todo
   # ------------------------------------------------------------------
   - name: "Add Todo"
     actions:
-      running:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "${TODO_TITLE_1}"
-          - click:
-              selector: "button[type='submit']"
-          - assert:
-              selector: ".todo-list"
-              text: "${TODO_TITLE_1}"
-              description: "New todo appears in the list"
+      steps:
+      - navigate:
+        url: "${BASE_URL}"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "${TODO_TITLE_1}"
+      - click:
+        selector: "button[type='submit']"
+      - assert:
+        selector: ".todo-list"
+        text: "${TODO_TITLE_1}"
+        description: "New todo appears in the list"
 
   # ------------------------------------------------------------------
   # 3. Toggle todo completion
   # ------------------------------------------------------------------
   - name: "Toggle Todo Completion"
     actions:
-      running:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "${TODO_TITLE_2}"
-          - click:
-              selector: "button[type='submit']"
-          - click:
-              selector: "[aria-label*='Toggle'][aria-label*='${TODO_TITLE_2}']"
-          - assert:
-              selector: "[aria-label*='Toggle'][aria-label*='${TODO_TITLE_2}']"
-              attribute: "checked"
-              description: "Todo is marked as completed"
+      steps:
+      - navigate:
+        url: "${BASE_URL}"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "${TODO_TITLE_2}"
+      - click:
+        selector: "button[type='submit']"
+      - click:
+        selector: "[aria-label*='Toggle'][aria-label*='${TODO_TITLE_2}']"
+      - assert:
+        selector: "[aria-label*='Toggle'][aria-label*='${TODO_TITLE_2}']"
+        attribute: "checked"
+        description: "Todo is marked as completed"
 
   # ------------------------------------------------------------------
   # 4. Delete a todo
   # ------------------------------------------------------------------
   - name: "Delete Todo"
     actions:
-      running:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "Delete me"
-          - click:
-              selector: "button[type='submit']"
-          - click:
-              selector: "[aria-label*='Delete'][aria-label*='Delete me']"
-          - assert_not:
-              selector: ".todo-list"
-              text: "Delete me"
-              description: "Deleted todo is no longer visible"
+      steps:
+      - navigate:
+        url: "${BASE_URL}"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "Delete me"
+      - click:
+        selector: "button[type='submit']"
+      - click:
+        selector: "[aria-label*='Delete'][aria-label*='Delete me']"
+      - assert_not:
+        selector: ".todo-list"
+        text: "Delete me"
+        description: "Deleted todo is no longer visible"
 
   # ------------------------------------------------------------------
   # 5. Edit a todo title
   # ------------------------------------------------------------------
   - name: "Edit Todo"
     actions:
-      running:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "${TODO_TITLE_EDIT_FROM}"
-          - click:
-              selector: "button[type='submit']"
-          - click:
-              selector: "[aria-label*='Edit'][aria-label*='${TODO_TITLE_EDIT_FROM}']"
-          - clear:
-              selector: "[aria-label='Edit todo']"
-          - fill:
-              selector: "[aria-label='Edit todo']"
-              value: "${TODO_TITLE_EDIT_TO}"
-          - click:
-              selector: "button[aria-label='Save']"
-          - assert:
-              selector: ".todo-list"
-              text: "${TODO_TITLE_EDIT_TO}"
-              description: "Updated title is visible"
+      steps:
+      - navigate:
+        url: "${BASE_URL}"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "${TODO_TITLE_EDIT_FROM}"
+      - click:
+        selector: "button[type='submit']"
+      - click:
+        selector: "[aria-label*='Edit'][aria-label*='${TODO_TITLE_EDIT_FROM}']"
+      - clear:
+        selector: "[aria-label='Edit todo']"
+      - fill:
+        selector: "[aria-label='Edit todo']"
+        value: "${TODO_TITLE_EDIT_TO}"
+      - click:
+        selector: "button[aria-label='Save']"
+      - assert:
+        selector: ".todo-list"
+        text: "${TODO_TITLE_EDIT_TO}"
+        description: "Updated title is visible"
 
   # ------------------------------------------------------------------
   # 6. Filter tabs — Active / Completed
   # ------------------------------------------------------------------
   - name: "Filter Todos"
     actions:
-      running:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "${TODO_ACTIVE}"
-          - click:
-              selector: "button[type='submit']"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "${TODO_DONE}"
-          - click:
-              selector: "button[type='submit']"
-          - click:
-              selector: "[aria-label*='Toggle'][aria-label*='${TODO_DONE}']"
-          - click:
-              selector: "button[aria-label='Active']"
-          - assert:
-              selector: ".todo-list"
-              text: "${TODO_ACTIVE}"
-              description: "Active todo visible in Active filter"
-          - assert_not:
-              selector: ".todo-list"
-              text: "${TODO_DONE}"
-              description: "Completed todo hidden in Active filter"
-          - click:
-              selector: "button[aria-label='Completed']"
-          - assert:
-              selector: ".todo-list"
-              text: "${TODO_DONE}"
-              description: "Completed todo visible in Completed filter"
+      steps:
+      - navigate:
+        url: "${BASE_URL}"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "${TODO_ACTIVE}"
+      - click:
+        selector: "button[type='submit']"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "${TODO_DONE}"
+      - click:
+        selector: "button[type='submit']"
+      - click:
+        selector: "[aria-label*='Toggle'][aria-label*='${TODO_DONE}']"
+      - click:
+        selector: "button[aria-label='Active']"
+      - assert:
+        selector: ".todo-list"
+        text: "${TODO_ACTIVE}"
+        description: "Active todo visible in Active filter"
+      - assert_not:
+        selector: ".todo-list"
+        text: "${TODO_DONE}"
+        description: "Completed todo hidden in Active filter"
+      - click:
+        selector: "button[aria-label='Completed']"
+      - assert:
+        selector: ".todo-list"
+        text: "${TODO_DONE}"
+        description: "Completed todo visible in Completed filter"
 
   # ------------------------------------------------------------------
   # 7. Clear Completed
   # ------------------------------------------------------------------
   - name: "Clear Completed"
     actions:
-      running:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "Keep me"
-          - click:
-              selector: "button[type='submit']"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "Clear me"
-          - click:
-              selector: "button[type='submit']"
-          - click:
-              selector: "[aria-label*='Toggle'][aria-label*='Clear me']"
-          - click:
-              selector: "button[aria-label*='Clear Completed']"
-          - assert:
-              selector: ".todo-list"
-              text: "Keep me"
-              description: "Active todo remains after Clear Completed"
-          - assert_not:
-              selector: ".todo-list"
-              text: "Clear me"
-              description: "Completed todo removed after Clear Completed"
+      steps:
+      - navigate:
+        url: "${BASE_URL}"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "Keep me"
+      - click:
+        selector: "button[type='submit']"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "Clear me"
+      - click:
+        selector: "button[type='submit']"
+      - click:
+        selector: "[aria-label*='Toggle'][aria-label*='Clear me']"
+      - click:
+        selector: "button[aria-label*='Clear Completed']"
+      - assert:
+        selector: ".todo-list"
+        text: "Keep me"
+        description: "Active todo remains after Clear Completed"
+      - assert_not:
+        selector: ".todo-list"
+        text: "Clear me"
+        description: "Completed todo removed after Clear Completed"
 
   # ------------------------------------------------------------------
   # 8. Stats counter
   # ------------------------------------------------------------------
   - name: "Stats Counter"
     actions:
-      running:
-        steps:
-          - navigate:
-              url: "${BASE_URL}"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "First"
-          - click:
-              selector: "button[type='submit']"
-          - fill:
-              selector: "[aria-label='New todo']"
-              value: "Second"
-          - click:
-              selector: "button[type='submit']"
-          - click:
-              selector: "[aria-label*='Toggle'][aria-label*='First']"
-          - assert:
-              selector: ".stats"
-              text: "Total: 2"
-              description: "Total count is correct"
-          - assert:
-              selector: ".stats"
-              text: "Completed: 1"
-              description: "Completed count is correct"
-          - assert:
-              selector: ".stats"
-              text: "Pending: 1"
-              description: "Pending count is correct"
+      steps:
+      - navigate:
+        url: "${BASE_URL}"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "First"
+      - click:
+        selector: "button[type='submit']"
+      - fill:
+        selector: "[aria-label='New todo']"
+        value: "Second"
+      - click:
+        selector: "button[type='submit']"
+      - click:
+        selector: "[aria-label*='Toggle'][aria-label*='First']"
+      - assert:
+        selector: ".stats"
+        text: "Total: 2"
+        description: "Total count is correct"
+      - assert:
+        selector: ".stats"
+        text: "Completed: 1"
+        description: "Completed count is correct"
+      - assert:
+        selector: ".stats"
+        text: "Pending: 1"
+        description: "Pending count is correct"
 
 populations:
   - name: "FunctionalUser"
