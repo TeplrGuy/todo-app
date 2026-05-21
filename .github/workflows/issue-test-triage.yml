@@ -17,6 +17,7 @@ jobs:
       issues: write
       contents: write
       pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
 
@@ -282,12 +283,28 @@ jobs:
               prUrl = createdPr.data.html_url;
             }
 
+            let validationDispatchStatus = 'not-requested';
+            if (isFunctionalTest) {
+              try {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: 'functional-tests.yml',
+                  ref: issueBranch
+                });
+                validationDispatchStatus = `requested for functional-tests.yml on ${issueBranch}`;
+              } catch (error) {
+                validationDispatchStatus = `failed (${error.status || 'n/a'}): ${error.message}`;
+              }
+            }
+
             const nl = '\n';
             let comment = '<!-- neoload-triage:v2 -->' + nl + nl;
             comment += '## Automated NeoLoad Test Triage' + nl + nl;
             comment += `Issue: ${title}` + nl + nl;
             comment += `Implementation PR: ${prUrl}` + nl + nl;
             comment += 'Detected test type(s):' + nl;
+            comment += `Validation workflow dispatch: ${validationDispatchStatus}` + nl;
             if (isFunctionalTest) comment += '- Functional test request' + nl;
             if (isLoadTest) comment += '- Load test request' + nl;
             if (!isFunctionalTest && !isLoadTest) comment += '- General test request (treated as functional by default)' + nl;
